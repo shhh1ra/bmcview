@@ -1,13 +1,11 @@
-# Проверка на каждый пуш и PR: формат, clippy, тесты — на Windows и macOS.
+# Проверка PR: формат, clippy, тесты — на Windows и macOS.
 #
 # Стоимость: репозиторий закрытый, минуты macOS списываются с коэффициентом ×10.
-# Поэтому изменения только в документации CI не запускают, а устаревшие прогоны отменяются.
+# Поэтому CI идёт только на PR (dev → main) и по кнопке, а не на каждый пуш. Изменения только
+# в документации его не запускают, устаревшие прогоны отменяются. Схема веток — docs/releasing.md.
 name: CI
 
 on:
-  push:
-    branches: [main]
-    paths-ignore: ["docs/**", "**/*.md"]
   pull_request:
     paths-ignore: ["docs/**", "**/*.md"]
   workflow_dispatch:
@@ -29,9 +27,9 @@ jobs:
     runs-on: ${{ matrix.os }}
     timeout-minutes: 30
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v7
         with:
           node-version: 24
           cache: npm
