@@ -1,3 +1,5 @@
 /target
+/dist
 **/node_modules
+/app/gen
 /tools/oracle/out

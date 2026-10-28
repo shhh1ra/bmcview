@@ -29,10 +29,7 @@ pub type FragmentDecrypt<'a> = &'a dyn Fn(&[u8]) -> Option<Vec<u8>>;
 /// сообщения (считая от типа) — реальная длина, с `[6]` — шифротекст
 /// (`com.kvm.DrawThread.run`). `decrypt` получает шифротекст и возвращает открытый текст.
 /// Нулевой фрагмент (заголовок кадра) не шифруется.
-pub fn fragment_from_message(
-    msg: &[u8],
-    decrypt: Option<FragmentDecrypt<'_>>,
-) -> Option<Vec<u8>> {
+pub fn fragment_from_message(msg: &[u8], decrypt: Option<FragmentDecrypt<'_>>) -> Option<Vec<u8>> {
     // msg: [p0, p1, 0x02, blade, fragHi, fragLo, frameNo, ...]
     let body = msg.get(2..)?; // [0x02, blade, fragHi, fragLo, frameNo, ...]
     if body.len() < 5 {
@@ -58,7 +55,10 @@ mod tests {
     #[test]
     fn plain_fragment_strips_prefix_type_and_blade() {
         let msg = [0xAA, 0xBB, 0x02, 0x00, 0x00, 0x01, 0x07, 1, 2, 3];
-        assert_eq!(fragment_from_message(&msg, None).unwrap(), vec![0, 1, 7, 1, 2, 3]);
+        assert_eq!(
+            fragment_from_message(&msg, None).unwrap(),
+            vec![0, 1, 7, 1, 2, 3]
+        );
     }
 
     #[test]
@@ -72,7 +72,11 @@ mod tests {
     #[test]
     fn header_fragment_is_never_decrypted() {
         let msg = [0, 0, 0x02, 0, 0x00, 0x00, 0x07, 9, 9];
-        let dec = |_: &[u8]| -> Option<Vec<u8>> { panic!("не должно вызываться") };
-        assert_eq!(fragment_from_message(&msg, Some(&dec)).unwrap(), vec![0, 0, 7, 9, 9]);
+        let dec =
+            |_: &[u8]| -> Option<Vec<u8>> { panic!("не должно вызываться") };
+        assert_eq!(
+            fragment_from_message(&msg, Some(&dec)).unwrap(),
+            vec![0, 0, 7, 9, 9]
+        );
     }
 }

@@ -41,7 +41,10 @@ pub struct KdfParams {
 
 impl Default for KdfParams {
     fn default() -> Self {
-        Self { kdf: Kdf::Sha1, iterations: 5000 }
+        Self {
+            kdf: Kdf::Sha1,
+            iterations: 5000,
+        }
     }
 }
 
@@ -65,7 +68,9 @@ pub fn wordswap(bytes: &mut [u8]) {
 fn java_password_from_bytes(bytes: &[u8]) -> Vec<u8> {
     let s: String = bytes
         .iter()
-        .map(|&b| char::from_u32(b as i8 as i16 as u16 as u32).expect("U+FF80..U+FFFF — не суррогаты"))
+        .map(|&b| {
+            char::from_u32(b as i8 as i16 as u16 as u32).expect("U+FF80..U+FFFF — не суррогаты")
+        })
         .collect();
     s.into_bytes()
 }
@@ -80,7 +85,11 @@ pub fn aes_cbc_encrypt(key: &[u8; 16], iv: &[u8; 16], plain: &[u8]) -> Vec<u8> {
     buf
 }
 
-pub fn aes_cbc_decrypt(key: &[u8; 16], iv: &[u8; 16], cipher: &[u8]) -> Result<Vec<u8>, CryptoError> {
+pub fn aes_cbc_decrypt(
+    key: &[u8; 16],
+    iv: &[u8; 16],
+    cipher: &[u8],
+) -> Result<Vec<u8>, CryptoError> {
     if !cipher.len().is_multiple_of(BLOCK) || cipher.is_empty() {
         return Err(CryptoError::BadCiphertextLength(cipher.len()));
     }
@@ -106,7 +115,8 @@ impl UserKeys {
         }
         let mut raw = [0u8; 32];
         for (i, byte) in raw.iter_mut().enumerate() {
-            *byte = u8::from_str_radix(&s[i * 2..i * 2 + 2], 16).map_err(|_| CryptoError::BadDecryKey)?;
+            *byte = u8::from_str_radix(&s[i * 2..i * 2 + 2], 16)
+                .map_err(|_| CryptoError::BadDecryKey)?;
         }
         let mut key = [0u8; 16];
         let mut iv = [0u8; 16];
@@ -125,13 +135,22 @@ impl UserKeys {
     }
 
     /// Сессионный ключ из тела сообщения `KVM_KEY_SET` (0x40), 48 байт шифротекста.
-    pub fn session_key(&self, key_set: &[u8], params: KdfParams) -> Result<SessionKey, CryptoError> {
+    pub fn session_key(
+        &self,
+        key_set: &[u8],
+        params: KdfParams,
+    ) -> Result<SessionKey, CryptoError> {
         if key_set.len() != 48 {
             return Err(CryptoError::BadKeySetLength(key_set.len()));
         }
         let plain = aes_cbc_decrypt(&self.key, &self.iv, key_set)?;
         let mut key = [0u8; 48];
-        pbkdf2(params, &java_password_from_bytes(&plain[..32]), &plain[32..48], &mut key);
+        pbkdf2(
+            params,
+            &java_password_from_bytes(&plain[..32]),
+            &plain[32..48],
+            &mut key,
+        );
         wordswap(&mut key);
         Ok(SessionKey(key))
     }

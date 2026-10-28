@@ -1,0 +1,114 @@
+# Релиз по тегу v*: установщики для Windows (.msi, .exe) и macOS (.dmg, universal).
+# Тег с дефисом (v0.1.0-alpha.1) публикуется как пре-релиз.
+#
+# Порядок: черновик релиза → сборки на обеих ОС → публикация. Если хотя бы одна сборка
+# упала, релиз остаётся черновиком и пользователи его не видят.
+name: Release
+
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: write
+
+jobs:
+  create-release:
+    name: Черновик релиза
+    runs-on: ubuntu-latest
+    outputs:
+      release_id: ${{ steps.create.outputs.result }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Тег совпадает с версией приложения
+        shell: bash
+        run: |
+          tag="${GITHUB_REF_NAME#v}"
+          base="${tag%%-*}"
+          app=$(grep -m1 '^version' app/Cargo.toml | cut -d'"' -f2)
+          pkg=$(node -p "require('./package.json').version")
+          if [ "$base" != "$app" ] || [ "$base" != "$pkg" ]; then
+            echo "::error::тег $GITHUB_REF_NAME не соответствует версии: app/Cargo.toml=$app, package.json=$pkg"
+            exit 1
+          fi
+
+      - name: Создать черновик
+        id: create
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const tag = context.ref.replace('refs/tags/', '');
+            const body = [
+              'Сборка без подписи (внутренний инструмент).',
+              '',
+              '**Windows:** при запуске SmartScreen → «Подробнее» → «Выполнить в любом случае».',
+              '**macOS:** первый запуск — правый клик по приложению → «Открыть»,',
+              'либо `xattr -dr com.apple.quarantine /Applications/bmcview.app`.',
+            ].join('\n');
+            const { data } = await github.rest.repos.createRelease({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              tag_name: tag,
+              name: `bmcview ${tag}`,
+              body,
+              draft: true,
+              prerelease: tag.includes('-'),
+              generate_release_notes: true,
+            });
+            return data.id;
+
+  build:
+    name: Сборка ${{ matrix.os }}
+    needs: create-release
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: windows-latest
+            args: ""
+            targets: ""
+          - os: macos-latest
+            args: --target universal-apple-darwin
+            targets: aarch64-apple-darwin,x86_64-apple-darwin
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.targets }}
+
+      - uses: Swatinem/rust-cache@v2
+
+      - name: Зависимости UI
+        run: npm ci
+
+      - name: Сборка и загрузка установщиков
+        uses: tauri-apps/tauri-action@v0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          releaseId: ${{ needs.create-release.outputs.release_id }}
+          args: ${{ matrix.args }}
+
+  publish:
+    name: Публикация
+    needs: [create-release, build]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/github-script@v7
+        with:
+          script: |
+            await github.rest.repos.updateRelease({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              release_id: Number('${{ needs.create-release.outputs.release_id }}'),
+              draft: false,
+            });

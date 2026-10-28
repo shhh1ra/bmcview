@@ -38,7 +38,11 @@ pub enum DecodeError {
     #[error("блоков в потоке больше, чем на экране ({0})")]
     TooManyBlocks(usize),
     #[error("неизвестный тип блока {zip_type}/{rle_type} (блок {block})")]
-    UnknownType { block: usize, zip_type: u8, rle_type: u8 },
+    UnknownType {
+        block: usize,
+        zip_type: u8,
+        rle_type: u8,
+    },
     #[error("блок {block} ссылается на отсутствующего соседа")]
     MissingNeighbour { block: usize },
     #[error("RLE блока {block} выходит за 64×64")]
@@ -46,7 +50,10 @@ pub enum DecodeError {
     #[error("уровень качества JPEG не задан")]
     NoQuality,
     #[error("JPEG блока {block}: {source}")]
-    Jpeg { block: usize, source: jpeg::JpegError },
+    Jpeg {
+        block: usize,
+        source: jpeg::JpegError,
+    },
 }
 
 /// Состояние одного блока. Пиксели разделяются между блоками при копировании.
@@ -86,7 +93,10 @@ impl Decoder {
 
     /// Левый верхний угол блока на экране.
     pub fn block_origin(&self, index: usize) -> (usize, usize) {
-        ((index % self.cols) * BLOCK_SIZE, (index / self.cols) * BLOCK_SIZE)
+        (
+            (index % self.cols) * BLOCK_SIZE,
+            (index / self.cols) * BLOCK_SIZE,
+        )
     }
 
     pub fn block_pixels(&self, index: usize) -> Option<&BlockPixels> {
@@ -131,14 +141,27 @@ impl Decoder {
                     let entropy = slice(data, pos + 3, len, index)?;
                     let quality = quality_index.ok_or(DecodeError::NoQuality)?;
                     let jpeg = jpeg::synthesize(quality, entropy).ok_or(DecodeError::NoQuality)?;
-                    let pixels = jpeg::decode(&jpeg).map_err(|source| DecodeError::Jpeg { block: index, source })?;
-                    let block = Block { pixels: Arc::from(pixels), rle_type: 0, palette: None };
+                    let pixels = jpeg::decode(&jpeg).map_err(|source| DecodeError::Jpeg {
+                        block: index,
+                        source,
+                    })?;
+                    let block = Block {
+                        pixels: Arc::from(pixels),
+                        rle_type: 0,
+                        palette: None,
+                    };
                     (3 + len, Some(block))
                 }
                 4 => (1, None),
                 5 => (1, Some(copy_of(neighbour(&next, index, self.cols, Above)?))),
                 6 => (1, Some(copy_of(neighbour(&next, index, self.cols, Left)?))),
-                _ => return Err(DecodeError::UnknownType { block: index, zip_type, rle_type }),
+                _ => {
+                    return Err(DecodeError::UnknownType {
+                        block: index,
+                        zip_type,
+                        rle_type,
+                    })
+                }
             };
             if let Some(block) = block {
                 next[index] = Some(block);
@@ -161,7 +184,9 @@ impl Decoder {
         rle_type: u8,
     ) -> Result<(usize, Option<Block>), DecodeError> {
         let dir = match rle_type {
-            0..=3 => return decode_rle(data, pos, index, rle_type, None).map(|(n, b)| (n, Some(b))),
+            0..=3 => {
+                return decode_rle(data, pos, index, rle_type, None).map(|(n, b)| (n, Some(b)))
+            }
             4 | 5 => Left,
             6 | 7 => Above,
             _ => unreachable!("rle_type — 3 бита"),
@@ -172,13 +197,21 @@ impl Decoder {
             // «Сплошной» сосед: копируется изображение, палитра не наследуется.
             return Ok((1, Some(copy_of(src))));
         }
-        let mut palette = src.palette.clone().ok_or(DecodeError::MissingNeighbour { block: index })?;
+        let mut palette = src
+            .palette
+            .clone()
+            .ok_or(DecodeError::MissingNeighbour { block: index })?;
         if !reuse_as_is && src.rle_type == 1 {
             // 5/7 для двухцветного соседа: цвета меняются местами, хвост палитры обнуляется.
             if palette.len() < 6 {
-                return Err(DecodeError::Truncated { block: index, offset: pos });
+                return Err(DecodeError::Truncated {
+                    block: index,
+                    offset: pos,
+                });
             }
-            let swapped = [palette[3], palette[4], palette[5], palette[0], palette[1], palette[2]];
+            let swapped = [
+                palette[3], palette[4], palette[5], palette[0], palette[1], palette[2],
+            ];
             palette.iter_mut().for_each(|b| *b = 0);
             palette[..6].copy_from_slice(&swapped);
         }
@@ -193,7 +226,12 @@ enum Direction {
 }
 use Direction::{Above, Left};
 
-fn neighbour(blocks: &[Option<Block>], index: usize, cols: usize, dir: Direction) -> Result<&Block, DecodeError> {
+fn neighbour(
+    blocks: &[Option<Block>],
+    index: usize,
+    cols: usize,
+    dir: Direction,
+) -> Result<&Block, DecodeError> {
     let src = match dir {
         Left => index.checked_sub(1),
         Above => index.checked_sub(cols),
@@ -204,7 +242,11 @@ fn neighbour(blocks: &[Option<Block>], index: usize, cols: usize, dir: Direction
 
 /// Копия блока соседа: изображение и RLE-тип, без палитры (как `new ImageBlock()` в оригинале).
 fn copy_of(src: &Block) -> Block {
-    Block { pixels: Arc::clone(&src.pixels), rle_type: src.rle_type, palette: None }
+    Block {
+        pixels: Arc::clone(&src.pixels),
+        rle_type: src.rle_type,
+        palette: None,
+    }
 }
 
 fn read_u16(data: &[u8], offset: usize, block: usize) -> Result<usize, DecodeError> {
@@ -215,13 +257,17 @@ fn read_u16(data: &[u8], offset: usize, block: usize) -> Result<usize, DecodeErr
 }
 
 fn slice(data: &[u8], offset: usize, len: usize, block: usize) -> Result<&[u8], DecodeError> {
-    data.get(offset..offset + len).ok_or(DecodeError::Truncated { block, offset })
+    data.get(offset..offset + len)
+        .ok_or(DecodeError::Truncated { block, offset })
 }
 
 fn color_at(palette: &[u8], i: usize, block: usize) -> Result<u32, DecodeError> {
     match palette.get(i * 3..i * 3 + 3) {
         Some(c) => Ok(ycbcr_to_rgb(c[0], c[1], c[2])),
-        None => Err(DecodeError::Truncated { block, offset: i * 3 }),
+        None => Err(DecodeError::Truncated {
+            block,
+            offset: i * 3,
+        }),
     }
 }
 
@@ -240,7 +286,10 @@ fn decode_rle(
         None => {
             let start = if rle_type == 0 { pos + 1 } else { pos + 3 };
             if start > data.len() {
-                return Err(DecodeError::Truncated { block, offset: start });
+                return Err(DecodeError::Truncated {
+                    block,
+                    offset: start,
+                });
             }
             let len = (data.len() - start).min(12);
             data[start..start + len].to_vec()
@@ -274,17 +323,36 @@ fn decode_rle(
             let mut filled = 0;
             for &b in runs {
                 let run = ((b & 0xFC) >> 2) as usize + 1;
-                fill(&mut pixels, &mut filled, run, colours[(b & 3) as usize], block)?;
+                fill(
+                    &mut pixels,
+                    &mut filled,
+                    run,
+                    colours[(b & 3) as usize],
+                    block,
+                )?;
             }
             3 + palette_len * 3 * coefficient + len
         }
         _ => unreachable!("decode_rle вызывается только для типов 0..=3"),
     };
 
-    Ok((consumed, Block { pixels: Arc::from(pixels), rle_type, palette: Some(palette) }))
+    Ok((
+        consumed,
+        Block {
+            pixels: Arc::from(pixels),
+            rle_type,
+            palette: Some(palette),
+        },
+    ))
 }
 
-fn fill(pixels: &mut BlockPixels, filled: &mut usize, run: usize, colour: u32, block: usize) -> Result<(), DecodeError> {
+fn fill(
+    pixels: &mut BlockPixels,
+    filled: &mut usize,
+    run: usize,
+    colour: u32,
+    block: usize,
+) -> Result<(), DecodeError> {
     let end = *filled + run;
     if end > BLOCK_PIXELS {
         return Err(DecodeError::RleOverflow { block });
@@ -301,7 +369,13 @@ fn fill(pixels: &mut BlockPixels, filled: &mut usize, run: usize, colour: u32, b
 /// Логика окончания повторяет байткод оригинала: когда байты кончились, а в буфере
 /// ещё остались биты (`tmpdata != 0` или `lastnum != 0` при незаполненном блоке),
 /// цикл продолжает разбирать их без чтения новых байт.
-fn decode_two_colour(bits: &[u8], c1: u32, c2: u32, pixels: &mut BlockPixels, block: usize) -> Result<(), DecodeError> {
+fn decode_two_colour(
+    bits: &[u8],
+    c1: u32,
+    c2: u32,
+    pixels: &mut BlockPixels,
+    block: usize,
+) -> Result<(), DecodeError> {
     let len = bits.len() as i64;
     let mut m: i64 = 0;
     let mut tmp: i32 = 0;
@@ -399,7 +473,9 @@ mod tests {
         while !bits.len().is_multiple_of(8) {
             bits.push('0');
         }
-        let body: Vec<u8> = bits.as_bytes().chunks(8)
+        let body: Vec<u8> = bits
+            .as_bytes()
+            .chunks(8)
             .map(|c| u8::from_str_radix(std::str::from_utf8(c).unwrap(), 2).unwrap())
             .collect();
         let mut v = vec![1 << 2];
@@ -418,7 +494,14 @@ mod tests {
     fn solid_blocks_and_geometry() {
         let mut d = Decoder::new();
         // 100×70 → 2×2 блока, нижний правый край обрезается отрисовкой.
-        let changed = d.decode(&frame(&[solid(GREY), solid(WHITE), solid(BLACK), solid(GREY)]), 100, 70, None).unwrap();
+        let changed = d
+            .decode(
+                &frame(&[solid(GREY), solid(WHITE), solid(BLACK), solid(GREY)]),
+                100,
+                70,
+                None,
+            )
+            .unwrap();
         assert_eq!(changed, vec![0, 1, 2, 3]);
         assert_eq!(d.block_count(), 4);
         assert_eq!(d.block_origin(3), (64, 64));
@@ -428,9 +511,22 @@ mod tests {
     #[test]
     fn unchanged_and_copy_blocks() {
         let mut d = Decoder::new();
-        d.decode(&frame(&[solid(WHITE), solid(BLACK), solid(GREY), solid(GREY)]), 128, 128, None).unwrap();
+        d.decode(
+            &frame(&[solid(WHITE), solid(BLACK), solid(GREY), solid(GREY)]),
+            128,
+            128,
+            None,
+        )
+        .unwrap();
         // 0: не изменился, 1: копия слева, 2: копия сверху, 3: не изменился.
-        let changed = d.decode(&frame(&[vec![0x80], vec![0xC0], vec![0xA0], vec![0x80]]), 128, 128, None).unwrap();
+        let changed = d
+            .decode(
+                &frame(&[vec![0x80], vec![0xC0], vec![0xA0], vec![0x80]]),
+                128,
+                128,
+                None,
+            )
+            .unwrap();
         assert_eq!(changed, vec![1, 2]);
         assert!(d.block_pixels(1).unwrap().iter().all(|&p| p == 0xFFFFFF));
         assert!(d.block_pixels(2).unwrap().iter().all(|&p| p == 0xFFFFFF));
@@ -520,9 +616,12 @@ mod tests {
     #[test]
     fn errors_leave_state_untouched() {
         let mut d = Decoder::new();
-        d.decode(&frame(&[solid(WHITE), solid(WHITE)]), 128, 64, None).unwrap();
+        d.decode(&frame(&[solid(WHITE), solid(WHITE)]), 128, 64, None)
+            .unwrap();
         // Первый блок меняется, второй ссылается на несуществующего соседа сверху.
-        let err = d.decode(&frame(&[solid(BLACK), vec![0xA0]]), 128, 64, None).unwrap_err();
+        let err = d
+            .decode(&frame(&[solid(BLACK), vec![0xA0]]), 128, 64, None)
+            .unwrap_err();
         assert!(matches!(err, DecodeError::MissingNeighbour { block: 1 }));
         assert!(d.block_pixels(0).unwrap().iter().all(|&p| p == 0xFFFFFF));
     }
@@ -530,14 +629,18 @@ mod tests {
     #[test]
     fn too_many_blocks() {
         let mut d = Decoder::new();
-        let err = d.decode(&frame(&[solid(GREY), solid(GREY)]), 64, 64, None).unwrap_err();
+        let err = d
+            .decode(&frame(&[solid(GREY), solid(GREY)]), 64, 64, None)
+            .unwrap_err();
         assert!(matches!(err, DecodeError::TooManyBlocks(1)));
     }
 
     #[test]
     fn jpeg_without_quality_is_an_error() {
         let mut d = Decoder::new();
-        let err = d.decode(&frame(&[vec![2 << 5, 0, 1, 0]]), 64, 64, None).unwrap_err();
+        let err = d
+            .decode(&frame(&[vec![2 << 5, 0, 1, 0]]), 64, 64, None)
+            .unwrap_err();
         assert!(matches!(err, DecodeError::NoQuality));
     }
 }

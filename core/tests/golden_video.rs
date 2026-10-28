@@ -11,14 +11,21 @@ fn crc32(data: impl IntoIterator<Item = u8>) -> u32 {
     for byte in data {
         crc ^= byte as u32;
         for _ in 0..8 {
-            crc = if crc & 1 != 0 { (crc >> 1) ^ 0xEDB8_8320 } else { crc >> 1 };
+            crc = if crc & 1 != 0 {
+                (crc >> 1) ^ 0xEDB8_8320
+            } else {
+                crc >> 1
+            };
         }
     }
     !crc
 }
 
 fn unhex(s: &str) -> Vec<u8> {
-    (0..s.len()).step_by(2).map(|i| u8::from_str_radix(&s[i..i + 2], 16).unwrap()).collect()
+    (0..s.len())
+        .step_by(2)
+        .map(|i| u8::from_str_radix(&s[i..i + 2], 16).unwrap())
+        .collect()
 }
 
 struct Frame {
@@ -73,14 +80,24 @@ fn load() -> Vec<Frame> {
 #[test]
 fn decoder_matches_original_java_client() {
     let frames = load();
-    assert!(frames.len() > 50, "эталонов подозрительно мало: {}", frames.len());
+    assert!(
+        frames.len() > 50,
+        "эталонов подозрительно мало: {}",
+        frames.len()
+    );
     let mut decoder = Decoder::new();
     let mut checked_blocks = 0;
     for f in &frames {
         let result = decoder.decode(&f.data, f.width, f.height, Some(f.quality));
         match (f.ok, &result) {
-            (true, Err(e)) => panic!("строка {}: оригинал декодировал кадр, порт — нет: {e}", f.line),
-            (false, Ok(_)) => panic!("строка {}: оригинал выдал исключение, порт кадр принял", f.line),
+            (true, Err(e)) => panic!(
+                "строка {}: оригинал декодировал кадр, порт — нет: {e}",
+                f.line
+            ),
+            (false, Ok(_)) => panic!(
+                "строка {}: оригинал выдал исключение, порт кадр принял",
+                f.line
+            ),
             _ => {}
         }
         if f.ok {
@@ -89,7 +106,11 @@ fn decoder_matches_original_java_client() {
                     .block_pixels(index)
                     .unwrap_or_else(|| panic!("строка {}: блок {index} отсутствует", f.line));
                 let actual = crc32(pixels.iter().flat_map(|p| p.to_be_bytes()));
-                assert_eq!(actual, expected, "строка {}: блок {index} отличается от оригинала", f.line);
+                assert_eq!(
+                    actual, expected,
+                    "строка {}: блок {index} отличается от оригинала",
+                    f.line
+                );
                 checked_blocks += 1;
             }
         }

@@ -135,7 +135,10 @@ mod tests {
         // REQ_BLADE_PRESENT: payload = [0x0B], codeKey = 0x01020304.
         let p = pack(0x0102_0304, &[0x0B]);
         let crc = crc16_xmodem(&[0x0B]).to_be_bytes();
-        assert_eq!(p, [0xFE, 0xF6, 0x00, 0x03, 0x01, 0x02, 0x03, 0x04, crc[0], crc[1], 0x0B]);
+        assert_eq!(
+            p,
+            [0xFE, 0xF6, 0x00, 0x03, 0x01, 0x02, 0x03, 0x04, crc[0], crc[1], 0x0B]
+        );
     }
 
     #[test]
@@ -170,7 +173,10 @@ mod tests {
         for chunk in stream.chunks(3) {
             got.extend(d.push(chunk));
         }
-        assert_eq!(got, vec![Message(vec![0, 0, 4, 0, 3]), Message(vec![0, 0, 8, 0, 2])]);
+        assert_eq!(
+            got,
+            vec![Message(vec![0, 0, 4, 0, 3]), Message(vec![0, 0, 8, 0, 2])]
+        );
         assert_eq!(got[0].kind(), 4);
         assert_eq!(got[1].blade(), Some(0));
     }

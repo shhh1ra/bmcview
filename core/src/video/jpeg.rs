@@ -51,7 +51,10 @@ pub fn decode(jpeg: &[u8]) -> Result<Box<BlockPixels>, JpegError> {
     let rgb = decoder.decode()?;
     let info = decoder.info().expect("info доступна после decode()");
     let size = BLOCK_SIZE as u16;
-    if info.width != size || info.height != size || info.pixel_format != jpeg_decoder::PixelFormat::RGB24 {
+    if info.width != size
+        || info.height != size
+        || info.pixel_format != jpeg_decoder::PixelFormat::RGB24
+    {
         return Err(JpegError::Format {
             width: info.width,
             height: info.height,

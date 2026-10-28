@@ -154,7 +154,12 @@ pub struct Assembler {
 
 impl Default for Assembler {
     fn default() -> Self {
-        Self { a: None, b: None, now_display: 0, first_judge: true }
+        Self {
+            a: None,
+            b: None,
+            now_display: 0,
+            first_judge: true,
+        }
     }
 }
 
@@ -207,7 +212,10 @@ impl Assembler {
 
     /// `setPremBuffer`.
     fn complete_primary(&mut self, out: &mut PushOutcome) {
-        let a = self.a.as_ref().expect("вызывается только при наличии буфера A");
+        let a = self
+            .a
+            .as_ref()
+            .expect("вызывается только при наличии буфера A");
         if a.diff && (self.first_judge || (self.now_display + 1) as i8 != a.number) {
             self.reset();
             out.request_iframe = true;
@@ -307,7 +315,13 @@ pub(crate) mod tests {
     use super::*;
 
     /// Нарезает данные кадра на фрагменты так же, как это делает BMC.
-    pub(crate) fn fragments(number: u8, width: u16, height: u16, info: u8, payload: &[u8]) -> Vec<Vec<u8>> {
+    pub(crate) fn fragments(
+        number: u8,
+        width: u16,
+        height: u16,
+        info: u8,
+        payload: &[u8],
+    ) -> Vec<Vec<u8>> {
         let mut header = vec![0, 0, number];
         header.extend_from_slice(&(payload.len() as u32).to_be_bytes());
         header.push(((width >> 8) as u8) & 0x7F);

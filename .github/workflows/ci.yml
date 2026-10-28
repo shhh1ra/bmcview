@@ -1,0 +1,59 @@
+# Проверка на каждый пуш и PR: формат, clippy, тесты — на Windows и macOS.
+#
+# Стоимость: репозиторий закрытый, минуты macOS списываются с коэффициентом ×10.
+# Поэтому изменения только в документации CI не запускают, а устаревшие прогоны отменяются.
+name: CI
+
+on:
+  push:
+    branches: [main]
+    paths-ignore: ["docs/**", "**/*.md"]
+  pull_request:
+    paths-ignore: ["docs/**", "**/*.md"]
+  workflow_dispatch:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    name: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [windows-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: clippy, rustfmt
+
+      - uses: Swatinem/rust-cache@v2
+
+      - name: Зависимости UI
+        run: npm ci
+
+      # generate_context! встраивает dist/ в бинарник, поэтому UI собирается до cargo.
+      - name: Сборка UI
+        run: npm run build
+
+      - name: Формат
+        run: cargo fmt --all --check
+
+      - name: Clippy
+        run: cargo clippy --workspace --all-targets --locked -- -D warnings
+
+      - name: Тесты
+        run: cargo test --workspace --locked

@@ -5,6 +5,9 @@
 //!
 //! Описание протокола — `docs/protocol.md`, решения — `docs/architecture.md`.
 
+/// Версия ядра.
+pub const VERSION: &str = env!("CARGO_PKG_VERSION");
+
 pub mod crc;
 pub mod crypto;
 pub mod framing;
