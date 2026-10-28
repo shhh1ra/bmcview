@@ -1,0 +1,970 @@
+ decodeRle([BIII[B)[Ljava/lang/Object; throws com/library/LibException 
+   L0
+    LINENUMBER 1009 L0
+    ICONST_0
+    ISTORE 6
+   L1
+    LINENUMBER 1010 L1
+    ICONST_0
+    ISTORE 7
+   L2
+    LINENUMBER 1011 L2
+    ICONST_0
+    ISTORE 8
+   L3
+    LINENUMBER 1012 L3
+    ICONST_0
+    ISTORE 9
+   L4
+    LINENUMBER 1013 L4
+    ICONST_0
+    ISTORE 10
+   L5
+    LINENUMBER 1014 L5
+    ICONST_0
+    ISTORE 11
+   L6
+    LINENUMBER 1016 L6
+    ICONST_0
+    ISTORE 12
+   L7
+    LINENUMBER 1017 L7
+    ICONST_0
+    ISTORE 13
+   L8
+    LINENUMBER 1018 L8
+    ACONST_NULL
+    ASTORE 14
+   L9
+    LINENUMBER 1021 L9
+    ICONST_1
+    ISTORE 15
+   L10
+    LINENUMBER 1023 L10
+    ACONST_NULL
+    ASTORE 16
+   L11
+    LINENUMBER 1025 L11
+    ACONST_NULL
+    ASTORE 17
+   L12
+    LINENUMBER 1042 L12
+    ILOAD 4
+    ISTORE 8
+   L13
+    LINENUMBER 1045 L13
+    ALOAD 5
+    IFNULL L14
+   L15
+    LINENUMBER 1047 L15
+    ALOAD 5
+    ARRAYLENGTH
+    NEWARRAY T_BYTE
+    ASTORE 14
+   L16
+    LINENUMBER 1048 L16
+    ALOAD 5
+    ICONST_0
+    ALOAD 14
+    ICONST_0
+    ALOAD 5
+    ARRAYLENGTH
+    INVOKESTATIC java/lang/System.arraycopy (Ljava/lang/Object;ILjava/lang/Object;II)V
+   L17
+    LINENUMBER 1049 L17
+    ICONST_0
+    ISTORE 13
+   L18
+    LINENUMBER 1050 L18
+    ICONST_0
+    ISTORE 15
+    GOTO L19
+   L14
+    LINENUMBER 1054 L14
+   FRAME FULL [com/library/decoder/ImageDecoder [B I I I [B I I I I I I I I [B I [I com/library/decoder/ImageBlock] []
+    ILOAD 2
+    ICONST_1
+    IADD
+    ISTORE 13
+   L20
+    LINENUMBER 1057 L20
+    ILOAD 8
+    IFEQ L21
+   L22
+    LINENUMBER 1059 L22
+    ILOAD 2
+    ICONST_3
+    IADD
+    ISTORE 13
+   L21
+    LINENUMBER 1061 L21
+   FRAME SAME
+    ALOAD 1
+    ARRAYLENGTH
+    ILOAD 13
+    BIPUSH 12
+    IADD
+    IF_ICMPGT L23
+    ALOAD 1
+    ARRAYLENGTH
+    ILOAD 13
+    ISUB
+    GOTO L24
+   L23
+   FRAME SAME
+    BIPUSH 12
+   L24
+   FRAME SAME1 I
+    ISTORE 12
+   L25
+    LINENUMBER 1062 L25
+    ILOAD 12
+    NEWARRAY T_BYTE
+    ASTORE 14
+   L26
+    LINENUMBER 1063 L26
+    ALOAD 1
+    ILOAD 13
+    ALOAD 14
+    ICONST_0
+    ALOAD 14
+    ARRAYLENGTH
+    INVOKESTATIC java/lang/System.arraycopy (Ljava/lang/Object;ILjava/lang/Object;II)V
+   L27
+    LINENUMBER 1064 L27
+    ICONST_0
+    ISTORE 13
+   L28
+    LINENUMBER 1065 L28
+    ICONST_1
+    ISTORE 15
+   L19
+    LINENUMBER 1069 L19
+   FRAME SAME
+    ILOAD 8
+    TABLESWITCH
+      0: L29
+      1: L30
+      2: L31
+      3: L31
+      4: L32
+      5: L32
+      6: L32
+      7: L32
+      default: L32
+   L29
+    LINENUMBER 1084 L29
+   FRAME SAME
+    SIPUSH 4096
+    NEWARRAY T_INT
+    ASTORE 16
+   L33
+    LINENUMBER 1085 L33
+    ICONST_0
+    ISTORE 18
+   L34
+   FRAME APPEND [I]
+    ILOAD 18
+    ALOAD 16
+    ARRAYLENGTH
+    IF_ICMPGE L35
+   L36
+    LINENUMBER 1087 L36
+    ALOAD 16
+    ILOAD 18
+    ALOAD 14
+    ILOAD 13
+    ICONST_0
+    IADD
+    BALOAD
+    ALOAD 14
+    ILOAD 13
+    ICONST_1
+    IADD
+    BALOAD
+    ALOAD 14
+    ILOAD 13
+    ICONST_2
+    IADD
+    BALOAD
+   L37
+    LINENUMBER 1088 L37
+    INVOKESTATIC com/library/decoder/ColorConverter.ycbcr2rgb (III)I
+    IASTORE
+   L38
+    LINENUMBER 1085 L38
+    IINC 18 1
+    GOTO L34
+   L35
+    LINENUMBER 1094 L35
+   FRAME CHOP 1
+    ICONST_4
+    ISTORE 7
+   L39
+    LINENUMBER 1095 L39
+    GOTO L40
+   L30
+    LINENUMBER 1105 L30
+   FRAME SAME
+    ICONST_0
+    ISTORE 18
+   L41
+    LINENUMBER 1114 L41
+    ICONST_0
+    ISTORE 19
+   L42
+    LINENUMBER 1115 L42
+    ICONST_0
+    ISTORE 20
+   L43
+    LINENUMBER 1118 L43
+    ICONST_0
+    ISTORE 21
+   L44
+    LINENUMBER 1121 L44
+    ICONST_0
+    ISTORE 22
+   L45
+    LINENUMBER 1122 L45
+    ICONST_0
+    ISTORE 23
+   L46
+    LINENUMBER 1123 L46
+    ICONST_0
+    ISTORE 24
+   L47
+    LINENUMBER 1126 L47
+    ALOAD 14
+    ILOAD 13
+    ICONST_0
+    IADD
+    BALOAD
+    ALOAD 14
+    ILOAD 13
+    ICONST_1
+    IADD
+    BALOAD
+    ALOAD 14
+    ILOAD 13
+    ICONST_2
+    IADD
+    BALOAD
+   L48
+    LINENUMBER 1127 L48
+    INVOKESTATIC com/library/decoder/ColorConverter.ycbcr2rgb (III)I
+    ISTORE 22
+   L49
+    LINENUMBER 1130 L49
+    ALOAD 14
+    ILOAD 13
+    ICONST_3
+    IADD
+    BALOAD
+    ALOAD 14
+    ILOAD 13
+    ICONST_4
+    IADD
+    BALOAD
+    ALOAD 14
+    ILOAD 13
+    ICONST_5
+    IADD
+    BALOAD
+   L50
+    LINENUMBER 1131 L50
+    INVOKESTATIC com/library/decoder/ColorConverter.ycbcr2rgb (III)I
+    ISTORE 23
+   L51
+    LINENUMBER 1134 L51
+    ILOAD 22
+    ISTORE 24
+   L52
+    LINENUMBER 1137 L52
+    ICONST_0
+    ISTORE 9
+   L53
+    LINENUMBER 1140 L53
+    ALOAD 1
+    ILOAD 2
+    ICONST_1
+    IADD
+    BALOAD
+    SIPUSH 255
+    IAND
+    BIPUSH 8
+    ISHL
+    ALOAD 1
+    ILOAD 2
+    ICONST_2
+    IADD
+    BALOAD
+    SIPUSH 255
+    IAND
+    IADD
+    ISTORE 6
+   L54
+    LINENUMBER 1142 L54
+    ILOAD 6
+    NEWARRAY T_BYTE
+    ASTORE 25
+   L55
+    LINENUMBER 1144 L55
+    ALOAD 1
+    ILOAD 2
+    ICONST_1
+    IADD
+    ICONST_2
+    IADD
+    BIPUSH 6
+    ILOAD 15
+    IMUL
+    IADD
+    ALOAD 25
+    ICONST_0
+    ILOAD 6
+    INVOKESTATIC java/lang/System.arraycopy (Ljava/lang/Object;ILjava/lang/Object;II)V
+   L56
+    LINENUMBER 1147 L56
+    SIPUSH 4096
+    NEWARRAY T_INT
+    ASTORE 16
+   L57
+    LINENUMBER 1154 L57
+    ICONST_0
+    ISTORE 26
+   L58
+    LINENUMBER 1155 L58
+    ICONST_0
+    ISTORE 27
+   L59
+   FRAME FULL [com/library/decoder/ImageDecoder [B I I I [B I I I I I I I I [B I [I com/library/decoder/ImageBlock I I I I I I I [B I I] []
+    ILOAD 27
+    ALOAD 25
+    ARRAYLENGTH
+    IF_ICMPGE L60
+   L61
+    LINENUMBER 1157 L61
+    ILOAD 27
+    ISTORE 26
+   L62
+    LINENUMBER 1164 L62
+    ILOAD 21
+    IFNE L63
+    ILOAD 20
+    BIPUSH 8
+    IF_ICMPGE L63
+   L64
+    LINENUMBER 1166 L64
+    ILOAD 19
+    LDC 65535
+    IAND
+    ALOAD 25
+    ILOAD 26
+    BALOAD
+    SIPUSH 255
+    IAND
+    BIPUSH 8
+    ILOAD 20
+    ISUB
+    ISHL
+    IOR
+    ISTORE 19
+   L65
+    LINENUMBER 1167 L65
+    IINC 20 8
+   L66
+    LINENUMBER 1168 L66
+    IINC 26 1
+   L63
+    LINENUMBER 1172 L63
+   FRAME SAME
+    ILOAD 19
+    LDC 64512
+    IAND
+    BIPUSH 10
+    ISHR
+    ICONST_1
+    IADD
+    ISTORE 11
+   L67
+    LINENUMBER 1173 L67
+    ILOAD 19
+    BIPUSH 6
+    ISHL
+    LDC 65535
+    IAND
+    ISTORE 19
+   L68
+    LINENUMBER 1174 L68
+    ILOAD 20
+    BIPUSH 6
+    ISUB
+    ISTORE 20
+   L69
+    LINENUMBER 1182 L69
+    ILOAD 11
+    BIPUSH 64
+    IF_ICMPGE L70
+   L71
+    LINENUMBER 1184 L71
+    ICONST_0
+    ISTORE 18
+    GOTO L72
+   L70
+    LINENUMBER 1190 L70
+   FRAME SAME
+    ILOAD 19
+    LDC 32768
+    IAND
+    BIPUSH 15
+    ISHR
+    ISTORE 18
+   L73
+    LINENUMBER 1191 L73
+    ILOAD 19
+    ICONST_1
+    ISHL
+    LDC 65535
+    IAND
+    ISTORE 19
+   L74
+    LINENUMBER 1192 L74
+    ILOAD 20
+    ICONST_1
+    ISUB
+    ISTORE 20
+   L72
+    LINENUMBER 1198 L72
+   FRAME SAME
+    ICONST_0
+    ISTORE 28
+   L75
+   FRAME APPEND [I]
+    ILOAD 28
+    ILOAD 11
+    IF_ICMPGE L76
+   L77
+    LINENUMBER 1201 L77
+    ILOAD 9
+    ILOAD 28
+    IADD
+    ALOAD 16
+    ARRAYLENGTH
+    IF_ICMPLT L78
+   L79
+    LINENUMBER 1203 L79
+    LDC "RLE 2 decode error: "
+    INVOKESTATIC com/library/LoggerUtil.error (Ljava/lang/String;)V
+   L78
+    LINENUMBER 1205 L78
+   FRAME SAME
+    ALOAD 16
+    ILOAD 9
+    ILOAD 28
+    IADD
+    ILOAD 24
+    IASTORE
+   L80
+    LINENUMBER 1198 L80
+    IINC 28 1
+    GOTO L75
+   L76
+    LINENUMBER 1209 L76
+   FRAME CHOP 1
+    ILOAD 9
+    ILOAD 11
+    IADD
+    ISTORE 9
+   L81
+    LINENUMBER 1213 L81
+    ILOAD 18
+    IFNE L82
+   L83
+    LINENUMBER 1216 L83
+    ILOAD 24
+    ILOAD 22
+    IF_ICMPNE L84
+   L85
+    LINENUMBER 1218 L85
+    ILOAD 23
+    ISTORE 24
+    GOTO L82
+   L84
+    LINENUMBER 1222 L84
+   FRAME SAME
+    ILOAD 22
+    ISTORE 24
+   L82
+    LINENUMBER 1230 L82
+   FRAME SAME
+    ILOAD 21
+    IFNE L86
+    ILOAD 26
+    ILOAD 6
+    IF_ICMPLT L87
+   L86
+    LINENUMBER 1232 L86
+   FRAME SAME
+    ILOAD 21
+    IFEQ L88
+   L89
+    LINENUMBER 1234 L89
+    IINC 26 1
+   L90
+    LINENUMBER 1235 L90
+    ICONST_0
+    ISTORE 21
+   L88
+    LINENUMBER 1237 L88
+   FRAME SAME
+    ILOAD 19
+    IFNE L91
+    ILOAD 20
+    IFEQ L87
+    ILOAD 9
+    ALOAD 16
+    ARRAYLENGTH
+    IF_ICMPGE L87
+   L91
+    LINENUMBER 1242 L91
+   FRAME SAME
+    ICONST_1
+    ISTORE 21
+   L92
+    LINENUMBER 1243 L92
+    IINC 26 -1
+   L87
+    LINENUMBER 1155 L87
+   FRAME SAME
+    ILOAD 26
+    ISTORE 27
+    GOTO L59
+   L60
+    LINENUMBER 1249 L60
+   FRAME CHOP 1
+    ICONST_3
+    BIPUSH 6
+    ILOAD 15
+    IMUL
+    IADD
+    ILOAD 6
+    IADD
+    ISTORE 7
+   L93
+    LINENUMBER 1250 L93
+    GOTO L40
+   L31
+    LINENUMBER 1270 L31
+   FRAME FULL [com/library/decoder/ImageDecoder [B I I I [B I I I I I I I I [B I [I com/library/decoder/ImageBlock] []
+    ICONST_0
+    ISTORE 27
+   L94
+    LINENUMBER 1272 L94
+    ICONST_4
+    NEWARRAY T_INT
+    DUP
+    ICONST_0
+    ALOAD 14
+    ILOAD 13
+    ICONST_0
+    IADD
+    BALOAD
+    ALOAD 14
+    ILOAD 13
+    ICONST_1
+    IADD
+    BALOAD
+    ALOAD 14
+    ILOAD 13
+    ICONST_2
+    IADD
+    BALOAD
+   L95
+    LINENUMBER 1275 L95
+    INVOKESTATIC com/library/decoder/ColorConverter.ycbcr2rgb (III)I
+    IASTORE
+    DUP
+    ICONST_1
+    ALOAD 14
+    ILOAD 13
+    ICONST_3
+    IADD
+    BALOAD
+    ALOAD 14
+    ILOAD 13
+    ICONST_4
+    IADD
+    BALOAD
+    ALOAD 14
+    ILOAD 13
+    ICONST_5
+    IADD
+    BALOAD
+   L96
+    LINENUMBER 1278 L96
+    INVOKESTATIC com/library/decoder/ColorConverter.ycbcr2rgb (III)I
+    IASTORE
+    DUP
+    ICONST_2
+    ALOAD 14
+    ILOAD 13
+    BIPUSH 6
+    IADD
+    BALOAD
+    ALOAD 14
+    ILOAD 13
+    BIPUSH 7
+    IADD
+    BALOAD
+    ALOAD 14
+    ILOAD 13
+    BIPUSH 8
+    IADD
+    BALOAD
+   L97
+    LINENUMBER 1281 L97
+    INVOKESTATIC com/library/decoder/ColorConverter.ycbcr2rgb (III)I
+    IASTORE
+    DUP
+    ICONST_3
+    ALOAD 14
+    ILOAD 13
+    BIPUSH 9
+    IADD
+    BALOAD
+    ALOAD 14
+    ILOAD 13
+    BIPUSH 10
+    IADD
+    BALOAD
+    ALOAD 14
+    ILOAD 13
+    BIPUSH 11
+    IADD
+    BALOAD
+   L98
+    LINENUMBER 1284 L98
+    INVOKESTATIC com/library/decoder/ColorConverter.ycbcr2rgb (III)I
+    IASTORE
+    ASTORE 28
+   L99
+    LINENUMBER 1288 L99
+    ICONST_0
+    ISTORE 9
+   L100
+    LINENUMBER 1291 L100
+    ICONST_4
+    ISTORE 10
+   L101
+    LINENUMBER 1292 L101
+    ILOAD 8
+    ICONST_2
+    IF_ICMPNE L102
+   L103
+    LINENUMBER 1294 L103
+    ICONST_3
+    ISTORE 10
+   L102
+    LINENUMBER 1298 L102
+   FRAME FULL [com/library/decoder/ImageDecoder [B I I I [B I I I I I I I I [B I [I com/library/decoder/ImageBlock T T T T T T T T T I [I] []
+    ALOAD 1
+    ILOAD 2
+    ICONST_1
+    IADD
+    BALOAD
+    SIPUSH 255
+    IAND
+    BIPUSH 8
+    ISHL
+    ALOAD 1
+    ILOAD 2
+    ICONST_2
+    IADD
+    BALOAD
+    SIPUSH 255
+    IAND
+    IADD
+    ISTORE 6
+   L104
+    LINENUMBER 1300 L104
+    ILOAD 6
+    NEWARRAY T_BYTE
+    ASTORE 29
+   L105
+    LINENUMBER 1302 L105
+    ALOAD 1
+    ILOAD 2
+    ICONST_1
+    IADD
+    ICONST_2
+    IADD
+    ILOAD 10
+    ICONST_3
+    IMUL
+    ILOAD 15
+    IMUL
+    IADD
+    ALOAD 29
+    ICONST_0
+    ILOAD 6
+    INVOKESTATIC java/lang/System.arraycopy (Ljava/lang/Object;ILjava/lang/Object;II)V
+   L106
+    LINENUMBER 1304 L106
+    SIPUSH 4096
+    NEWARRAY T_INT
+    ASTORE 16
+   L107
+    LINENUMBER 1307 L107
+    ICONST_0
+    ISTORE 30
+   L108
+   FRAME APPEND [[B I]
+    ILOAD 30
+    ALOAD 29
+    ARRAYLENGTH
+    IF_ICMPGE L109
+   L110
+    LINENUMBER 1312 L110
+    ALOAD 29
+    ILOAD 30
+    BALOAD
+    SIPUSH 252
+    IAND
+    ICONST_2
+    ISHR
+    ICONST_1
+    IADD
+    ISTORE 11
+   L111
+    LINENUMBER 1313 L111
+    ALOAD 29
+    ILOAD 30
+    BALOAD
+    ICONST_3
+    IAND
+    ISTORE 27
+   L112
+    LINENUMBER 1318 L112
+    ICONST_0
+    ISTORE 31
+   L113
+   FRAME APPEND [I]
+    ILOAD 31
+    ILOAD 11
+    IF_ICMPGE L114
+   L115
+    LINENUMBER 1320 L115
+    ALOAD 16
+    ILOAD 9
+    ILOAD 31
+    IADD
+    ALOAD 28
+    ILOAD 27
+    IALOAD
+    IASTORE
+   L116
+    LINENUMBER 1318 L116
+    IINC 31 1
+    GOTO L113
+   L114
+    LINENUMBER 1324 L114
+   FRAME CHOP 1
+    ILOAD 9
+    ILOAD 11
+    IADD
+    ISTORE 9
+   L117
+    LINENUMBER 1307 L117
+    IINC 30 1
+    GOTO L108
+   L109
+    LINENUMBER 1328 L109
+   FRAME CHOP 1
+    ICONST_3
+    ILOAD 10
+    ICONST_3
+    IMUL
+    ILOAD 15
+    IMUL
+    IADD
+    ILOAD 6
+    IADD
+    ISTORE 7
+   L118
+    LINENUMBER 1329 L118
+    GOTO L40
+   L32
+    LINENUMBER 1339 L32
+   FRAME FULL [com/library/decoder/ImageDecoder [B I I I [B I I I I I I I I [B I [I com/library/decoder/ImageBlock] []
+    NEW com/library/LibException
+    DUP
+    LDC "RLE imagedata error"
+    INVOKESPECIAL com/library/LibException.<init> (Ljava/lang/String;)V
+    ATHROW
+   L40
+    LINENUMBER 1344 L40
+   FRAME SAME
+    ALOAD 0
+    GETFIELD com/library/decoder/ImageDecoder.imageCreater : Lcom/library/decoder/ImageCreater;
+    ALOAD 16
+    GETSTATIC com/library/decoder/ImageDecoder.blockImageWidth : I
+    GETSTATIC com/library/decoder/ImageDecoder.blockImageHeight : I
+    INVOKEVIRTUAL com/library/decoder/ImageCreater.createRLEImg ([III)Ljava/awt/image/BufferedImage;
+    ASTORE 18
+   L119
+    LINENUMBER 1345 L119
+    NEW com/library/decoder/ImageBlock
+    DUP
+    INVOKESPECIAL com/library/decoder/ImageBlock.<init> ()V
+    ASTORE 17
+   L120
+    LINENUMBER 1346 L120
+    ALOAD 17
+    ILOAD 8
+    INVOKEVIRTUAL com/library/decoder/ImageBlock.setBlockRleType (I)V
+   L121
+    LINENUMBER 1347 L121
+    ALOAD 17
+    ICONST_0
+    INVOKEVIRTUAL com/library/decoder/ImageBlock.setBlockType (I)V
+   L122
+    LINENUMBER 1348 L122
+    ALOAD 17
+    ALOAD 14
+    INVOKEVIRTUAL com/library/decoder/ImageBlock.setPixColors ([B)V
+   L123
+    LINENUMBER 1349 L123
+    ALOAD 17
+    ALOAD 18
+    INVOKEVIRTUAL com/library/decoder/ImageBlock.setImage (Ljava/awt/Image;)V
+   L124
+    LINENUMBER 1351 L124
+    ALOAD 1
+    ARRAYLENGTH
+    ILOAD 2
+    ISUB
+    ALOAD 17
+    GETFIELD com/library/decoder/ImageBlock.zipDataBak : [I
+    ARRAYLENGTH
+    IF_ICMPGE L125
+    ALOAD 1
+    ARRAYLENGTH
+    ILOAD 2
+    ISUB
+    GOTO L126
+   L125
+   FRAME APPEND [java/awt/Image]
+    ALOAD 17
+    GETFIELD com/library/decoder/ImageBlock.zipDataBak : [I
+    ARRAYLENGTH
+   L126
+   FRAME SAME1 I
+    ISTORE 19
+   L127
+    LINENUMBER 1354 L127
+    ICONST_0
+    ISTORE 20
+   L128
+   FRAME APPEND [I I]
+    ILOAD 20
+    ILOAD 19
+    IF_ICMPGE L129
+   L130
+    LINENUMBER 1356 L130
+    ALOAD 17
+    GETFIELD com/library/decoder/ImageBlock.zipDataBak : [I
+    ILOAD 20
+    ALOAD 1
+    ILOAD 2
+    ILOAD 20
+    IADD
+    BALOAD
+    SIPUSH 255
+    IAND
+    IASTORE
+   L131
+    LINENUMBER 1354 L131
+    IINC 20 1
+    GOTO L128
+   L129
+    LINENUMBER 1358 L129
+   FRAME CHOP 1
+    ALOAD 17
+    GETFIELD com/library/decoder/ImageBlock.zipDataBak : [I
+    BIPUSH 7
+    ILOAD 2
+    IASTORE
+   L132
+    LINENUMBER 1359 L132
+    ALOAD 17
+    GETFIELD com/library/decoder/ImageBlock.zipDataBak : [I
+    BIPUSH 8
+    ILOAD 7
+    IASTORE
+   L133
+    LINENUMBER 1360 L133
+    ALOAD 17
+    GETFIELD com/library/decoder/ImageBlock.zipDataBak : [I
+    BIPUSH 9
+    ILOAD 6
+    IASTORE
+   L134
+    LINENUMBER 1362 L134
+    ICONST_2
+    ANEWARRAY java/lang/Object
+    DUP
+    ICONST_0
+    ILOAD 7
+    INVOKESTATIC java/lang/Integer.valueOf (I)Ljava/lang/Integer;
+    AASTORE
+    DUP
+    ICONST_1
+    ALOAD 17
+    AASTORE
+    ASTORE 20
+   L135
+    LINENUMBER 1364 L135
+    ALOAD 20
+    ARETURN
+   L136
+    LOCALVARIABLE j I L34 L35 18
+    LOCALVARIABLE j I L75 L76 28
+    LOCALVARIABLE m I L59 L60 27
+    LOCALVARIABLE change_flag I L41 L31 18
+    LOCALVARIABLE tmpdata I L42 L31 19
+    LOCALVARIABLE lastnum I L43 L31 20
+    LOCALVARIABLE isLastCyc Z L44 L31 21
+    LOCALVARIABLE bufColor1 I L45 L31 22
+    LOCALVARIABLE bufColor2 I L46 L31 23
+    LOCALVARIABLE bufColor3 I L47 L31 24
+    LOCALVARIABLE temBlockData [B L55 L31 25
+    LOCALVARIABLE m_temp I L58 L31 26
+    LOCALVARIABLE j I L113 L114 31
+    LOCALVARIABLE m I L108 L109 30
+    LOCALVARIABLE index I L94 L32 27
+    LOCALVARIABLE temcolor [I L99 L32 28
+    LOCALVARIABLE temBlockData1 [B L105 L32 29
+    LOCALVARIABLE i I L128 L129 20
+    LOCALVARIABLE this Lcom/library/decoder/ImageDecoder; L0 L136 0
+    LOCALVARIABLE zipDatas [B L0 L136 1
+    LOCALVARIABLE srcPos I L0 L136 2
+    LOCALVARIABLE blocknum I L0 L136 3
+    LOCALVARIABLE type I L0 L136 4
+    LOCALVARIABLE pixColors [B L0 L136 5
+    LOCALVARIABLE len I L1 L136 6
+    LOCALVARIABLE syclen I L2 L136 7
+    LOCALVARIABLE rZipType I L3 L136 8
+    LOCALVARIABLE subSyclen I L4 L136 9
+    LOCALVARIABLE indexType I L5 L136 10
+    LOCALVARIABLE subPixlen I L6 L136 11
+    LOCALVARIABLE collen I L7 L136 12
+    LOCALVARIABLE srcColPos I L8 L136 13
+    LOCALVARIABLE butPixColors [B L9 L136 14
+    LOCALVARIABLE coefficient I L10 L136 15
+    LOCALVARIABLE imageData [I L11 L136 16
+    LOCALVARIABLE imageBlock Lcom/library/decoder/ImageBlock; L12 L136 17
+    LOCALVARIABLE imageRLE Ljava/awt/Image; L119 L136 18
+    LOCALVARIABLE len1 I L127 L136 19
+    LOCALVARIABLE reObj [Ljava/lang/Object; L135 L136 20
+    MAXSTACK = 8
+    MAXLOCALS = 32

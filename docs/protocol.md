@@ -1,0 +1,326 @@
+# Huawei iBMC KVM — протокол (по декомпиляции клиента)
+
+Источник: `D:\kvm_client_windows\KVM.exe` (JSmooth-обёртка, jar `com.kvm.Main`, сборка 2018-12-25).
+Декомпилированные исходники: `src/`. Ссылки ниже — на файлы оттуда.
+
+Всё описанное — ветка **iBMC** (`com.kvm`). Ветка `com.kvmV1` — старый iMana, здесь не разбиралась.
+
+Пометка **[?]** — вывод из кода, который нужно подтвердить дампом трафика.
+
+---
+
+## 0. Общая схема
+
+```
+1. HTTPS POST /bmc/php/processparameter.php  → порты, ключи, verifyValue
+   (запасной путь: IPMI OEM через ipmitool)
+2. TCP host:kvmPort           — «управляющий» сокет (blade present / blade state)
+3. TCP bladeIP:bladePort      — сессия KVM (видео, клавиатура, мышь, питание)
+4. TCP host:vmmPort           — виртуальные носители (отдельный протокол, SCSI)
+```
+
+Никакого TLS на KVM-сокетах нет. Конфиденциальность — AES-128-CBC поверх отдельных полей, если `compress=1`.
+
+---
+
+## 1. Логин
+
+### 1.1 Веб (основной путь) — `ClientSubmitLoginIofo.java`, `Main.java:270-480`
+
+```
+POST https://<host>:<port>/bmc/php/processparameter.php
+Content-Type: application/x-www-form-urlencoded
+
+check_pwd=<urlencoded pwd>&logtype=1&user_name=<user>&func=DirectKVM&IsKvmApp=1&KvmMode=<0|1>
+```
+
+`KvmMode`: `0` — общий режим, `1` — монопольный. Сертификат BMC клиент не проверяет (свой TrustManager).
+
+Ответ — JSON. Клиент режет его по позициям (`FindParaFromMsg.java`); нормальный парсер просто прочитает поля:
+
+| Поле (по смыслу)  | Что это |
+|---|---|
+| error code        | `0` — ок; `131` — пользователь заблокирован, `136` — нет прав, `137` — пароль истёк, `144` — вход ограничен |
+| `verifyValue`     | десятичное число → **codeKey** (int32), кладётся в заголовок каждого пакета |
+| `decrykey`        | 64 hex = 32 байта: `user_key = [0:16]`, `user_iv = [16:32]` |
+| `privilege`       | уровень прав |
+| `compress`        | `1` — KVM шифруется |
+| `vmm_compress`    | `1` — VMM шифруется |
+| `kvmPort`, `vmmPort` | порты |
+| `SerialNumber`, `verifyValueExt` | опционально; при наличии `verifyValueExt` включается согласование KDF (§3.1) |
+
+Точные имена JSON-ключей в коде не видны (разбор позиционный) → **[?]** снять один реальный ответ.
+
+### 1.2 IPMI (запасной путь) — `LoginAuthentication.java`
+
+Через `ipmitool -I lanplus`, OEM netfn 0x30, IANA Huawei `DB 07 00`:
+
+| Назначение | raw |
+|---|---|
+| логин/«ключ»   | `0x30 0x94 DB 07 00 21 06 00 00 37 00 24 <4 байта rand 0..9> <32×00> <username hex> <12×00> <KvmMode>` |
+| KVM-порт       | `0x30 0x93 DB 07 00 38 0a 00 01 ff 00 00 01 00` → порт = последние 4 байта, little-endian |
+| VMM-порт       | `0x30 0x93 DB 07 00 38 0b 00 01 ff 00 00 01 00` |
+| compress       | `0x30 0x94 DB 07 00 20 02 00 ff` → последний байт |
+| vmm_compress   | `0x30 0x94 DB 07 00 20 03 00 ff` |
+
+В этом режиме `verifyValue` = случайное число 0..9, `decrykey` = нули. Реализовывать стоит только если веб-путь недоступен.
+
+---
+
+## 2. Пакеты клиент → BMC — `PackData.java`
+
+### 2.1 Обычный пакет (`makePackData`)
+
+```
+off  size  поле
+0    2     FE F6                      магия
+2    2     len = payload_len + 2      big-endian
+4    4     codeKey                    big-endian int32 (verifyValue)
+8    2     CRC16(payload)             big-endian
+10   N     payload                    payload[0] = код команды, payload[1] = номер blade
+```
+
+**CRC16**: полином 0x1021, init 0, без отражения, без xorout — CRC-16/XMODEM (`CCrc.java`, режим `CRC_16_H`).
+
+### 2.2 Пакет с зашифрованным заголовком (`makeEncrypPackData`) — только CONNECT_BLADE при `compress=1`
+
+```
+0    2     FE F6
+2    2     (payload_len + 2) | 0x8000
+4    24    encodeKey (§3.1)
+28   2     CRC16(payload)
+30   N     payload
+```
+
+### 2.3 Команды
+
+| Код | Имя | Payload |
+|---|---|---|
+| 0x03 | KEY_PACK | `03 blade <8 байт HID-репорта>` (или 16 байт AES, §4) |
+| 0x04 | keyboard state req | `04 blade 01` |
+| 0x05 | MOUSE_PACK | §4.2 |
+| 0x06 | CONNECT_BLADE | `06 blade colorBit 01 01 [128 байт reconnKey]` |
+| 0x07 | INTERRUPT_BLADE | `07 blade` |
+| 0x08 | I_REQ (запросить I-кадр) | `08 blade` |
+| 0x09 | HEART_BEAT | `09 blade` |
+| 0x0B | REQ_BLADE_PRESENT | `0B` |
+| 0x14 | REQ_BLADE_STATE | `14 blade` (`21 blade` при connMode=1) |
+| 0x17 / 0x18 | monitor start/stop | `17 blade 01` / `18 blade 01` |
+| 0x1B | COLOR_BIT | `1B blade colorBit` |
+| 0x1C | FRAME_COMM (FPS) | `1C fps` — клиент шлёт 35 при старте, 0 при уходе с вкладки |
+| 0x20–0x25, 0x30 | питание / USB reset | §4.3 |
+| 0x24 | MOUSE_MODE_SET | `24 00 mode 00 00` — клиент шлёт mode=2 при старте |
+| 0x27 | DQT_MODE_SET (качество) | `27 00 mode type 00` |
+| 0x31 / 0x35 | запрос VMM codekey / port | `31 blade` / `35 blade` |
+| 0x40 / 0x41 | video control / uncontrol | `40 00` / `41 00` |
+| 0x42 | GET_SUITE | `42 blade` |
+| 0x44 | SET_SUITE | `44 blade alg iter(4, BE)` |
+
+---
+
+## 3. Ключи — `AESHandler.java`, `KVMApplet.java:262-308`, `BladeThread.java:253-306, 407-465`
+
+Шифр везде AES-128-CBC без паддинга: данные дополняются нулями до кратного 16.
+
+`wordswap(k)` — перестановка байт в каждом 4-байтовом слове (`b0 b1 b2 b3 → b3 b2 b1 b0`).
+
+### 3.1 encodeKey (24 байта, только для CONNECT_BLADE при compress=1)
+
+```
+encodeKey = wordswap( PBKDF2(hmac, password = verifyValue (или verifyValueExt при согласовании),
+                             salt = user_iv, iter, dkLen = 24) )
+```
+
+По умолчанию `hmac = SHA1`, `iter = 5000`.
+
+**Согласование** (если есть `verifyValueExt`): `GET_SUITE` → ответ `0x43`, в нём `count`, затем `count × [alg(1) iter(4 BE)]`. Здесь `alg 2` = PBKDF2-SHA1, `alg 3` = PBKDF2-SHA256. Клиент выбирает SHA256, если он есть, и отвечает `SET_SUITE(blade, alg, iter)`. Если подходящего варианта нет — `SET_SUITE(blade, 1, 5000)`.
+
+### 3.2 kvm_key (48 байт, сессионный)
+
+После CONNECT_BLADE сервер присылает `0x40 KVM_KEY_SET`, 48 байт:
+
+```
+plain     = AES-CBC-decrypt(data, key = user_key, iv = user_iv)
+password  = plain[0:32]  (как строка)
+salt      = plain[32:48]
+kvm_key   = wordswap( PBKDF2(hmac, password, salt, iter, 48) )
+```
+
+Раскладка `kvm_key`:
+
+- `[0:16]` — ключ видео, команд питания и VMM-отчётов;
+- `[16:32]` — ключ ввода (клавиатура, мышь);
+- `[32:48]` — IV для всего.
+
+Если в `0x40` пришло 128 байт, это `reconnKey`: после расшифровки user_key/user_iv он вкладывается в следующий CONNECT_BLADE.
+
+### 3.3 Режим compress=0, «новый» blade
+
+Клавиатура шифруется ключом `{codeKey BE (4 байта), 05 06 07 08, 01..08}`, IV = 0 (`AESHandler.encry`).
+
+---
+
+## 4. Ввод
+
+### 4.1 Клавиатура
+
+Стандартный 8-байтный USB HID boot report: `[modifiers, 0, k1..k6]`.
+
+Модификаторы: `01` LCtrl, `02` LShift, `04` LAlt, `08` LGui, `10` RCtrl, `20` RShift, `40` RAlt, `80` RGui.
+
+Коды клавиш — HID usage IDs (таблица `S_KEY_*`/`USB_KEY_*` в `Base.java`, перевод из AWT — `KVMUtil.translateToUSBCode`). Для браузера: `KeyboardEvent.code → HID usage` по стандартной таблице.
+
+Отправка: `03 blade` + репорт. При `compress=1` репорт заменяется на `AES(kvm_key[16:32], iv = kvm_key[32:48])` от 8 байт с нулевым дополнением (16 байт). Клиент шлёт полный текущий репорт на каждое нажатие и отпускание.
+
+Готовые комбинации:
+
+- Ctrl+Alt+Del = `05 00 4C 00..`;
+- Ctrl+Esc = `01 00 29 00..`;
+- Ctrl+Shift = `03 00..`.
+
+### 4.2 Мышь
+
+Абсолютный режим (`mousePackNew_abs`). Координаты нормируются к 0..3000:
+
+```
+x = px * 3000 / imageWidth
+y = py * 3000 / imageHeight
+plain:  05 blade btn xH xL yH yL wheel
+enc:    05 blade AES(kvm_key[16:32], iv)(btn xH xL yH yL wheel) — 16 байт
+```
+
+Кнопки: `01` левая, `02` правая, `04` средняя. `wheel` — знаковый байт.
+
+Относительный режим: `05 blade btn dx dy 00`, где dx и dy — int8.
+
+### 4.3 Питание
+
+| cmd | действие |
+|---|---|
+| 0x20 | выключить |
+| 0x21 | включить |
+| 0x22 | перезагрузка |
+| 0x23 | безопасная перезагрузка |
+| 0x25 | «save power off» (вероятно, принудительное выключение) **[?]** |
+| 0x30 | USB reset |
+
+- `compress=0`: payload = `cmd 00`.
+- `compress=1`: payload = `33 00` + `AES(kvm_key[0:16], iv = kvm_key[32:48])` от 16 байт, где `[15] = cmd`, остальное — нули.
+
+---
+
+## 5. Пакеты BMC → клиент
+
+### 5.1 Фрейминг — `KVMUtil.diviStreamNew`
+
+```
+FE F6 00 LL  <LL байт>
+```
+
+`LL` — от 3 до 250. Внутри: `[0:2]` — вероятно, CRC **[?]**; `[2]` — тип; `[3]` — номер blade; дальше данные.
+
+Сервер шлёт только короткие пакеты: видеокадр режется на фрагменты.
+
+### 5.2 Типы
+
+| Тип | Что |
+|---|---|
+| 0x01 | blade present (битовая маска) |
+| 0x02 | фрагмент видео (§6) |
+| 0x04 | LED: бит0 Num, бит1 Caps, бит2 Scroll |
+| 0x08 | состояние соединения: 2 — превышено число пользователей, 3 — неверные данные, 4 — сигнал вне диапазона, 7 — пользователь удалён, 17 — таймаут сессии … |
+| 0x15 | blade state (IP/порт blade, codeKey в последнем байте) **[?]** точная раскладка |
+| 0x1D | переключение канала |
+| 0x21 | blade закрыт |
+| 0x25 | режим мыши: 0 — относительный, 1 — абсолютный |
+| 0x28 | качество: `dqtzSize = b/10 - 1` |
+| 0x32 | VMM codekey: 20 байт codekey + 16 байт salt (при compress — AES kvm_key) |
+| 0x36 | VMM port (2 байта) |
+| 0x40 | KVM_KEY_SET (§3.2) |
+| 0x43 | список KDF-наборов (§3.1) |
+| 0x51 | нет прав на VMM |
+
+---
+
+## 6. Видео — `DrawThread.java`, `KVMUtil.isComplete/setVar/combine`, `library/decoder/*`
+
+### 6.1 Фрагменты
+
+Видеопакет типа 0x02 после фрейминга выглядит так: `02 blade | fragIdx(2, BE) frameNo(1) data…`.
+
+При `compress=1` и `fragIdx != 0`: байт `[5]` пакета — реальная длина, с `[6]` идут данные под `AES(kvm_key[0:16], iv = kvm_key[32:48])`. После расшифровки берётся `reallen` байт.
+
+Нулевой фрагмент (`fragIdx = 0`) — заголовок кадра, не шифруется. Смещения от начала (`fragIdx`):
+
+```
+[0:2]   0000
+[2]     frameNo
+[3:7]   totalLen (BE)            сумма полезных байт всех фрагментов
+[7]     бит7 = diff (P-кадр/«тот же кадр»), биты 6..0 = width[14:8]
+[8]     width[7:0]
+[9:11]  height (BE)
+[12:14] cursorX, [14:16] cursorY
+[16]    младшие 4 бита = индекс таблицы DQT (качество), бит7 = I-кадр
+```
+
+Каждый следующий фрагмент несёт до 220 полезных байт начиная с `[3]`. Кадр собран, когда сумма полезных байт = `totalLen`.
+
+Если пропущен кадр или фрагмент не совпал, клиент шлёт `I_REQ (0x08)`, и сервер присылает полный кадр.
+
+Собранный буфер: `[0] = diff-флаг`, затем склеенные полезные данные фрагментов 1..n.
+
+### 6.2 Кодек (новый алгоритм, `decodeRLEorJPEG1`)
+
+Экран делится на блоки 64×64 в растровом порядке. Крайние блоки обрезаются до размера экрана.
+
+Поток блоков начинается с байта 1. Байт заголовка блока: `zipType = b>>5`, `rZipType = (b>>2)&7`.
+
+| zipType | Смысл |
+|---|---|
+| 0 / 1 | RLE-блок (1 = крайний, обрезанный) — см. rZipType |
+| 2 / 3 | JPEG-блок (3 = крайний): `len(2 BE)` + entropy-coded данные |
+| 4 | блок не изменился (1 байт) |
+| 5 | скопировать блок сверху (1 байт) |
+| 6 | скопировать блок слева (1 байт) |
+
+RLE, `rZipType` (цвета — YCbCr, по 3 байта, в RGB по формулам JFIF):
+
+| rZipType | Формат |
+|---|---|
+| 0 | сплошной цвет: `hdr Y Cb Cr` (4 байта) |
+| 1 | два цвета: `hdr len(2) c0(3) c1(3) bits[len]`. Битовый поток: 6 бит = run-1; если run = 64 — ещё 1 бит «не переключать цвет». По умолчанию цвет чередуется c0↔c1 |
+| 2 / 3 | палитра 3 / 4 цвета: `hdr len(2) palette(3·n) runs[len]`, где каждый байт: `run = (b>>2)+1`, `idx = b&3` |
+| 4 / 6 | то же, но палитра берётся из блока слева / сверху (в потоке её нет) |
+| 5 / 7 | палитра слева / сверху, для двухцветного режима c0 и c1 переставлены |
+
+JPEG-блок — baseline 64×64 4:4:4. Клиент дописывает спереди SOI+APP0 (JFIF), три DQT (Y/Cb/Cr из таблиц `DQTZData` по индексу качества), SOF0 64×64 4:4:4, стандартные DHT и SOS, сзади — `FFD9`. Получившийся файл декодирует любой JPEG-декодер, в браузере — `createImageBitmap(new Blob([...]))`.
+
+Таблицы — `src/com/library/decoder/JPEGData.java` и `DQTZData.java`, их можно скопировать байт в байт.
+
+Старый алгоритм (`!isNewCompAlgorithm`, `RLEJPEGUtil.unZipData` + XOR с предыдущим кадром, RGB332) клиент для iBMC не включает (`Base.java:660` всегда ставит `true`).
+
+---
+
+## 7. Последовательность сессии (iBMC, одиночный сервер)
+
+1. Веб-логин (§1.1) → `codeKey`, `user_key`/`user_iv`, `compress`, порты.
+2. TCP `host:kvmPort`. Отправить `REQ_BLADE_PRESENT`, затем по ответу — `REQ_BLADE_STATE(blade)`.
+3. Из ответа `0x15` взять IP/порт blade и открыть второй TCP **[?]** (на стоечном сервере, скорее всего, тот же host). Для blade обновляется codeKey.
+4. На blade-сокете:
+   - если есть `verifyValueExt` — `GET_SUITE` → `0x43` → `SET_SUITE`, затем пересчитать encodeKey;
+   - отправить `CONNECT_BLADE(blade, colorBit)` (§2.2 при compress=1);
+   - получить `0x40` и вывести `kvm_key`;
+   - отправить `FRAME_COMM(35)` и `MOUSE_MODE_SET(2)`.
+5. Дальше: видео `0x02`, LED `0x04`, клавиатура и мышь (§4), `HEART_BEAT` по таймеру (`BladeHeartTimer`), при сбоях — `I_REQ`.
+
+---
+
+## 8. Что осталось уточнить на живом BMC
+
+- Имена ключей JSON в ответе `processparameter.php` (§1.1).
+- Раскладка `0x15 BLADE_STATE`: IP, порт, codeKey (`KVMUtil.showBladeAbsent`, ~строка 1580). Её можно дочитать и в коде, но проще и надёжнее подтвердить дампом.
+- Первые 2 байта входящих пакетов (§5.1).
+- Период heartbeat и таймауты (`BladeHeartTimer`, `Base.BLADE_HEART_TIME`).
+- VMM (виртуальные носители, `com/huawei/vm/console/*`): отдельный протокол с эмуляцией UFI/SFF-8020i SCSI — в этом документе не описан.
+
+Самый быстрый способ закрыть всё сразу — один дамп Wireshark сессии родного клиента на стенде с `compress=0` (если на BMC можно отключить шифрование KVM). Без шифрования весь поток читается глазами.

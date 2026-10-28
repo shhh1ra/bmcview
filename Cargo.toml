@@ -1,0 +1,9 @@
+[workspace]
+resolver = "2"
+members = ["core"]
+
+[workspace.package]
+edition = "2021"
+license = "MIT"
+# as_chunks / is_multiple_of
+rust-version = "1.88"
