@@ -11,5 +11,16 @@ tauri-build = { version = "2", features = [] }
 
 [dependencies]
 ibmc-core = { path = "../core" }
+bytes = "1"
+http-body-util = "0.1"
+hyper = { version = "1", features = ["client", "http1"] }
+hyper-util = { version = "0.1", features = ["tokio"] }
+# Провайдер ring вместо aws-lc-rs: не нужны cmake и NASM для сборки на Windows.
+rustls = { version = "0.23", default-features = false, features = ["ring", "std", "tls12", "logging"] }
 serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+sha2 = "0.10"
 tauri = { version = "2", features = [] }
+thiserror = "1"
+tokio = { version = "1", features = ["io-util", "macros", "net", "rt", "sync", "time"] }
+tokio-rustls = { version = "0.26", default-features = false, features = ["ring", "tls12", "logging"] }

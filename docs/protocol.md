@@ -49,7 +49,7 @@ check_pwd=<urlencoded pwd>&logtype=1&user_name=<user>&func=DirectKVM&IsKvmApp=1&
 | `kvmPort`, `vmmPort` | порты |
 | `SerialNumber`, `verifyValueExt` | опционально; при наличии `verifyValueExt` включается согласование KDF (§3.1) |
 
-Точные имена JSON-ключей в коде не видны (разбор позиционный) → **[?]** снять один реальный ответ.
+Имена JSON-ключей не нужны: значения стоят в `[...]` по порядку (код ошибки, verifyValue, "decrykey", privilege, compress, vmm_compress, kvmPort, vmmPort), дополнительные — в `<...>` (SerialNumber, verifyValueExt). `core::login` разбирает ответ так же, как оригинал (`FindParaFromMsg`). `verifyValue` → codeKey: младшие 32 бита числа.
 
 ### 1.2 IPMI (запасной путь) — `LoginAuthentication.java`
 
@@ -110,7 +110,7 @@ off  size  поле
 | 0x1C | FRAME_COMM (FPS) | `1C fps` — клиент шлёт 35 при старте, 0 при уходе с вкладки |
 | 0x20–0x25, 0x30 | питание / USB reset | §4.3 |
 | 0x24 | MOUSE_MODE_SET | `24 00 mode 00 00` — клиент шлёт mode=2 при старте |
-| 0x27 | DQT_MODE_SET (качество) | `27 00 mode type 00` |
+| 0x27 | DQT_MODE_SET (качество) | `27 00 value type 00`; value — 40, 50, 70, 80, 90, 100 (ползунок 40..90, от 60 и выше шлётся +10), type 2 — отпускание ползунка |
 | 0x31 / 0x35 | запрос VMM codekey / port | `31 blade` / `35 blade` |
 | 0x40 / 0x41 | video control / uncontrol | `40 00` / `41 00` |
 | 0x42 | GET_SUITE | `42 blade` |
@@ -200,7 +200,7 @@ plain:  05 blade btn xH xL yH yL wheel
 enc:    05 blade AES(kvm_key[16:32], iv)(btn xH xL yH yL wheel) — 16 байт
 ```
 
-Кнопки: `01` левая, `02` правая, `04` средняя. `wheel` — знаковый байт.
+Кнопки: `01` левая, `02` правая, `04` средняя. `wheel` — знаковый байт, как Java `getWheelRotation`: положительный — прокрутка вниз.
 
 Относительный режим: `05 blade btn dx dy 00`, где dx и dy — int8.
 
@@ -208,11 +208,11 @@ enc:    05 blade AES(kvm_key[16:32], iv)(btn xH xL yH yL wheel) — 16 байт
 
 | cmd | действие |
 |---|---|
-| 0x20 | выключить |
-| 0x21 | включить |
-| 0x22 | перезагрузка |
-| 0x23 | безопасная перезагрузка |
-| 0x25 | «save power off» (вероятно, принудительное выключение) **[?]** |
+| 0x20 | принудительное выключение («Forced Power Off») |
+| 0x21 | включение |
+| 0x22 | холодный сброс («Cold Reset») |
+| 0x23 | корректная перезагрузка («Graceful Reboot») |
+| 0x25 | корректное выключение («Graceful Power Off») |
 | 0x30 | USB reset |
 
 - `compress=0`: payload = `cmd 00`.
@@ -340,7 +340,7 @@ JPEG-блок — baseline 64×64 4:4:4. Клиент дописывает сп�
 
 ## 8. Что осталось уточнить на живом BMC
 
-- Имена ключей JSON в ответе `processparameter.php` (§1.1). Дамп их не показал: логин идёт по HTTPS.
+- ~~Имена ключей JSON в ответе логина~~ — не нужны, разбор позиционный (§1.1). Проверить на живом BMC: ответ действительно в одну строку.
 - Таймауты сервера: через сколько BMC рвёт сессию без heartbeat.
 - Переподключение с `reconnKey` и смена качества из тулбара. Это задача для второго дампа.
 - ~~Раскладка `0x15 BLADE_STATE`~~ — на стоечном сервере не используется (§7).
