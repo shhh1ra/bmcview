@@ -11,4 +11,7 @@ pub const VERSION: &str = env!("CARGO_PKG_VERSION");
 pub mod crc;
 pub mod crypto;
 pub mod framing;
+pub mod input;
+pub mod login;
+pub mod session;
 pub mod video;

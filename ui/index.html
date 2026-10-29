@@ -7,12 +7,150 @@
     <link rel="stylesheet" href="/src/style.css" />
   </head>
   <body>
-    <main class="placeholder">
-      <h1>bmcview</h1>
-      <p class="lead">KVM-консоль для Huawei iBMC</p>
-      <p class="status">Ранняя сборка: ядро протокола готово, подключение к серверам ещё не реализовано.</p>
-      <p class="build" id="build-info">…</p>
+    <main id="login-view" class="login">
+      <form id="login-form" class="card" autocomplete="off">
+        <h1>bmcview</h1>
+        <p class="lead">KVM-консоль Huawei iBMC</p>
+
+        <label>
+          Адрес BMC
+          <input id="address" list="recent" placeholder="10.10.12.8 или bmc.local:443" required />
+          <datalist id="recent"></datalist>
+        </label>
+        <label>
+          Пользователь
+          <input id="user" required />
+        </label>
+        <label>
+          Пароль
+          <input id="password" type="password" required />
+        </label>
+        <label class="check">
+          <input id="exclusive" type="checkbox" />
+          Монопольный режим (другие пользователи будут отключены)
+        </label>
+
+        <button id="connect" type="submit" class="primary">Подключиться</button>
+        <p id="login-error" class="error" hidden></p>
+
+        <section id="cert-changed" class="warning" hidden>
+          <strong>Сертификат BMC изменился.</strong>
+          <p>
+            Так бывает после перепрошивки или замены сертификата, но так же выглядит и подмена
+            сервера. Пароль не отправлен. Продолжайте, только если знаете причину смены.
+          </p>
+          <dl>
+            <dt>Был</dt>
+            <dd id="cert-expected"></dd>
+            <dt>Стал</dt>
+            <dd id="cert-actual"></dd>
+          </dl>
+          <button id="cert-trust" type="button">Доверять новому сертификату</button>
+        </section>
+
+        <p class="build" id="build-info"></p>
+      </form>
     </main>
+
+    <main id="console-view" class="console" hidden>
+      <header class="toolbar">
+        <span id="host" class="host"></span>
+        <span id="status" class="status"></span>
+        <span id="unencrypted" class="badge danger" hidden
+          title="BMC работает без шифрования KVM (compress=0): нажатия клавиш, включая пароли, можно прочитать в сети. Мышь и видео не шифруются.">
+          без шифрования
+        </span>
+        <span class="leds" title="Индикаторы клавиатуры сервера">
+          <span id="led-num" class="led">Num</span>
+          <span id="led-caps" class="led">Caps</span>
+          <span id="led-scroll" class="led">Scroll</span>
+        </span>
+        <span class="spacer"></span>
+        <label class="inline">
+          Масштаб
+          <select id="scale">
+            <option value="fit">По окну</option>
+            <option value="0.5">50%</option>
+            <option value="0.75">75%</option>
+            <option value="1">100%</option>
+            <option value="1.25">125%</option>
+            <option value="1.5">150%</option>
+            <option value="2">200%</option>
+          </select>
+        </label>
+        <label class="inline">
+          Качество
+          <select id="quality">
+            <option value="40">40</option>
+            <option value="50">50</option>
+            <option value="70">60</option>
+            <option value="80">70</option>
+            <option value="90">80</option>
+            <option value="100">90</option>
+          </select>
+        </label>
+        <button id="refresh" type="button" title="Запросить полный кадр">Обновить</button>
+        <button id="cad" type="button">Ctrl+Alt+Del</button>
+        <div class="menu">
+          <button id="combos" type="button">Клавиши ▾</button>
+          <div id="combo-panel" class="menu-list combo-panel" hidden>
+            <div class="combo-grid">
+              <button type="button" data-combo="ctrlShift">Ctrl+Shift</button>
+              <button type="button" data-combo="ctrlEsc">Ctrl+Esc</button>
+              <button type="button" data-combo="ctrlAltDel">Ctrl+Alt+Del</button>
+              <button type="button" data-combo="altTab">Alt+Tab</button>
+              <button type="button" data-combo="ctrlSpace">Ctrl+Space</button>
+              <button type="button" id="reset-keyboard" title="Отпустить все клавиши на сервере">
+                Сбросить клавиатуру
+              </button>
+            </div>
+            <p class="combo-hint">
+              Своя комбинация: щёлкните ячейку и нажмите клавишу, например Win, затем R.
+            </p>
+            <div class="combo-custom">
+              <button type="button" class="slot"></button>
+              <button type="button" class="slot"></button>
+              <button type="button" class="slot"></button>
+              <button type="button" class="slot"></button>
+              <button type="button" class="slot"></button>
+              <button type="button" class="slot"></button>
+            </div>
+            <div class="actions">
+              <button type="button" id="combo-clear">Очистить</button>
+              <button type="button" id="combo-send" class="primary">Отправить</button>
+            </div>
+          </div>
+        </div>
+        <div class="menu">
+          <button id="power" type="button">Питание ▾</button>
+          <div id="power-menu" class="menu-list" hidden>
+            <button type="button" data-power="powerOn">Включить</button>
+            <button type="button" data-power="gracefulOff">Выключить (корректно)</button>
+            <button type="button" data-power="gracefulReboot">Перезагрузить (корректно)</button>
+            <button type="button" data-power="forceOff" class="danger">Выключить принудительно</button>
+            <button type="button" data-power="coldReset" class="danger">Холодный сброс</button>
+            <button type="button" data-power="usbReset">Сброс USB</button>
+          </div>
+        </div>
+        <button id="fullscreen" type="button" title="Полный экран">⛶</button>
+        <button id="disconnect" type="button">Отключиться</button>
+      </header>
+      <div id="stage" class="stage">
+        <canvas id="screen" tabindex="0"></canvas>
+        <p id="stage-message" class="stage-message">Подключение…</p>
+      </div>
+    </main>
+
+    <div id="modal" class="modal" hidden>
+      <div class="card">
+        <p id="modal-text"></p>
+        <div class="actions">
+          <button id="modal-cancel" type="button">Отмена</button>
+          <button id="modal-ok" type="button" class="primary">Выполнить</button>
+        </div>
+      </div>
+    </div>
+
     <script type="module" src="/src/main.ts"></script>
   </body>
 </html>

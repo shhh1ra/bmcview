@@ -5,6 +5,8 @@ export default defineConfig({
   root: "ui",
   clearScreen: false,
   server: {
+    // Явно IPv4: иначе localhost в Node слушается только как ::1, а Tauri ждёт 127.0.0.1.
+    host: "127.0.0.1",
     port: 5173,
     strictPort: true,
   },
