@@ -387,7 +387,11 @@ mod tests {
         assert_eq!(&frame[6..10], &[0, 0, 0, 0], "первый блок в (0, 0)");
         assert_eq!(&frame[10..14], &[0xFF, 0xFF, 0xFF, 0xFF]);
         let second = 6 + 4 + 64 * 64 * 4;
-        assert_eq!(&frame[second..second + 4], &[64, 0, 0, 0], "второй блок в (64, 0)");
+        assert_eq!(
+            &frame[second..second + 4],
+            &[64, 0, 0, 0],
+            "второй блок в (64, 0)"
+        );
         assert_eq!(&frame[second + 4..second + 8], &[0x80, 0x80, 0x80, 0xFF]);
     }
 }
