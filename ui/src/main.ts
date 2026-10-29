@@ -186,6 +186,8 @@ function openConsole(address: string, result: Connected): void {
   stageMessage.hidden = false;
   canvas.width = 0;
   canvas.height = 0;
+  canvas.style.width = "";
+  canvas.style.height = "";
   loginView.hidden = true;
   consoleView.hidden = false;
   canvas.focus();
@@ -251,6 +253,7 @@ function drawFrame(buffer: ArrayBuffer): void {
   if (canvas.width !== width || canvas.height !== height) {
     canvas.width = width;
     canvas.height = height;
+    applyScale();
   }
   stageMessage.hidden = true;
   let offset = 6;
@@ -263,6 +266,51 @@ function drawFrame(buffer: ArrayBuffer): void {
     offset += BLOCK_BYTES;
   }
 }
+
+// ---------- масштаб ----------
+//
+// Canvas хранит кадр в разрешении сервера, на экране он растягивается через CSS-размер.
+// Координаты мыши пересчитываются по фактическому размеру (serverPoint), так что
+// масштаб на них не влияет.
+
+const SCALE_KEY = "bmcview.scale";
+const stage = el("stage");
+const scaleSelect = el<HTMLSelectElement>("scale");
+
+function applyScale(): void {
+  if (!canvas.width || !canvas.height) return;
+  let scale: number;
+  if (scaleSelect.value === "fit") {
+    scale = Math.min(stage.clientWidth / canvas.width, stage.clientHeight / canvas.height);
+  } else {
+    scale = Number(scaleSelect.value);
+  }
+  canvas.style.width = `${Math.floor(canvas.width * scale)}px`;
+  canvas.style.height = `${Math.floor(canvas.height * scale)}px`;
+  // При целом увеличении — без сглаживания: текст консоли остаётся чётким.
+  canvas.classList.toggle("pixelated", Number.isInteger(scale) && scale >= 2);
+}
+
+try {
+  const saved = localStorage.getItem(SCALE_KEY);
+  if (saved && [...scaleSelect.options].some((o) => o.value === saved)) scaleSelect.value = saved;
+} catch {
+  // хранилище недоступно — остаётся «По окну»
+}
+
+scaleSelect.addEventListener("change", () => {
+  try {
+    localStorage.setItem(SCALE_KEY, scaleSelect.value);
+  } catch {
+    // не критично
+  }
+  applyScale();
+  canvas.focus();
+});
+
+new ResizeObserver(() => {
+  if (scaleSelect.value === "fit") applyScale();
+}).observe(stage);
 
 // ---------- клавиатура ----------
 
