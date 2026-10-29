@@ -29,12 +29,16 @@ type UiEvent =
   | { type: "mouseMode"; absolute: boolean }
   | { type: "quality"; value: number };
 
-type PowerAction = "forceOff" | "powerOn" | "coldReset" | "gracefulReboot" | "gracefulOff" | "usbReset";
+type ComboKey = "ctrlShift" | "ctrlEsc" | "ctrlAltDel" | "altTab" | "ctrlSpace";
+
+type PowerAction ="forceOff" | "powerOn" | "coldReset" | "gracefulReboot" | "gracefulOff" | "usbReset";
 
 type Input =
   | { type: "key"; code: string; down: boolean }
   | { type: "releaseKeys" }
-  | { type: "ctrlAltDel" }
+  | { type: "combo"; combo: ComboKey }
+  | { type: "customCombo"; codes: string[] }
+  | { type: "resetKeyboard" }
   | { type: "mouse"; x: number; y: number; buttons: number; wheel: number }
   | { type: "quality"; value: number }
   | { type: "power"; action: PowerAction }
@@ -401,7 +405,7 @@ el("refresh").addEventListener("click", () => {
 });
 
 el("cad").addEventListener("click", () => {
-  send({ type: "ctrlAltDel" });
+  send({ type: "combo", combo: "ctrlAltDel" });
   canvas.focus();
 });
 
@@ -409,8 +413,122 @@ el("power").addEventListener("click", () => {
   powerMenu.hidden = !powerMenu.hidden;
 });
 
+// Выпадающее меню закрывается щелчком мимо него.
 document.addEventListener("click", (e) => {
-  if (!(e.target as HTMLElement).closest(".menu")) powerMenu.hidden = true;
+  for (const list of document.querySelectorAll<HTMLElement>(".menu-list")) {
+    if (!list.parentElement?.contains(e.target as Node)) list.hidden = true;
+  }
+});
+
+// ---------- комбинации клавиш (как панель в Java-консоли) ----------
+//
+// Системные сочетания (Win, Alt+Tab, Ctrl+Esc) перехватывает ОС этого компьютера, поэтому,
+// как и в оригинале, они отправляются на сервер отсюда.
+
+const comboPanel = el("combo-panel");
+const slots = [...comboPanel.querySelectorAll<HTMLButtonElement>(".slot")];
+const CUSTOM_KEY = "bmcview.customCombo";
+
+const KEY_NAMES: Record<string, string> = {
+  ControlLeft: "Ctrl",
+  ControlRight: "RCtrl",
+  ShiftLeft: "Shift",
+  ShiftRight: "RShift",
+  AltLeft: "Alt",
+  AltRight: "AltGr",
+  MetaLeft: "Win",
+  MetaRight: "RWin",
+  OSLeft: "Win",
+  OSRight: "RWin",
+  Escape: "Esc",
+  Delete: "Del",
+  Insert: "Ins",
+  Backspace: "Bksp",
+  ArrowLeft: "←",
+  ArrowRight: "→",
+  ArrowUp: "↑",
+  ArrowDown: "↓",
+  PageUp: "PgUp",
+  PageDown: "PgDn",
+  PrintScreen: "PrtSc",
+  ContextMenu: "Menu",
+};
+
+function keyLabel(code: string): string {
+  return KEY_NAMES[code] ?? code.replace(/^(Key|Digit)/, "").replace(/^Numpad/, "Num ");
+}
+
+function setSlot(slot: HTMLButtonElement, code: string | undefined): void {
+  if (code) {
+    slot.dataset.code = code;
+  } else {
+    delete slot.dataset.code;
+  }
+  slot.textContent = code ? keyLabel(code) : "";
+}
+
+function customCodes(): string[] {
+  return slots.map((s) => s.dataset.code).filter((c): c is string => !!c);
+}
+
+function saveCustom(): void {
+  try {
+    localStorage.setItem(CUSTOM_KEY, JSON.stringify(customCodes()));
+  } catch {
+    // не критично
+  }
+}
+
+try {
+  const saved = JSON.parse(localStorage.getItem(CUSTOM_KEY) ?? "[]") as string[];
+  saved.slice(0, slots.length).forEach((code, i) => setSlot(slots[i], code));
+} catch {
+  // пустая комбинация
+}
+
+slots.forEach((slot, i) => {
+  slot.addEventListener("keydown", (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setSlot(slot, e.code);
+    saveCustom();
+    (slots[i + 1] ?? slot).focus();
+  });
+});
+
+el("combos").addEventListener("click", () => {
+  comboPanel.hidden = !comboPanel.hidden;
+});
+
+for (const button of comboPanel.querySelectorAll<HTMLButtonElement>("[data-combo]")) {
+  button.addEventListener("click", () => {
+    send({ type: "combo", combo: button.dataset.combo as ComboKey });
+    comboPanel.hidden = true;
+    canvas.focus();
+  });
+}
+
+el("reset-keyboard").addEventListener("click", () => {
+  send({ type: "resetKeyboard" });
+  comboPanel.hidden = true;
+  canvas.focus();
+});
+
+el("combo-clear").addEventListener("click", () => {
+  slots.forEach((slot) => setSlot(slot, undefined));
+  saveCustom();
+  slots[0].focus();
+});
+
+el("combo-send").addEventListener("click", () => {
+  const codes = customCodes();
+  if (codes.length === 0) {
+    slots[0].focus();
+    return;
+  }
+  send({ type: "customCombo", codes });
+  comboPanel.hidden = true;
+  canvas.focus();
 });
 
 for (const item of powerMenu.querySelectorAll<HTMLButtonElement>("[data-power]")) {

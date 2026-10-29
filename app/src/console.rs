@@ -6,7 +6,7 @@
 
 use std::time::{Duration, Instant};
 
-use ibmc_core::input::combo;
+use ibmc_core::input::{self, combo, KeyReport};
 use ibmc_core::login::LoginInfo;
 use ibmc_core::session::{CloseReason, Event, PowerCommand, Session};
 use ibmc_core::video::{Decoder, BLOCK_SIZE};
@@ -32,7 +32,15 @@ pub enum Input {
         down: bool,
     },
     ReleaseKeys,
-    CtrlAltDel,
+    /// Готовая комбинация из панели «Комбинации клавиш».
+    Combo {
+        combo: ComboKey,
+    },
+    /// Своя комбинация: до шести `KeyboardEvent.code`.
+    CustomCombo {
+        codes: Vec<String>,
+    },
+    ResetKeyboard,
     Mouse {
         x: u32,
         y: u32,
@@ -47,6 +55,28 @@ pub enum Input {
     },
     Refresh,
     Disconnect,
+}
+
+#[derive(Debug, Clone, Copy, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub enum ComboKey {
+    CtrlShift,
+    CtrlEsc,
+    CtrlAltDel,
+    AltTab,
+    CtrlSpace,
+}
+
+impl ComboKey {
+    fn report(self) -> KeyReport {
+        match self {
+            ComboKey::CtrlShift => combo::CTRL_SHIFT,
+            ComboKey::CtrlEsc => combo::CTRL_ESC,
+            ComboKey::CtrlAltDel => combo::CTRL_ALT_DEL,
+            ComboKey::AltTab => combo::ALT_TAB,
+            ComboKey::CtrlSpace => combo::CTRL_SPACE,
+        }
+    }
 }
 
 #[derive(Debug, Clone, Copy, Deserialize)]
@@ -234,7 +264,13 @@ fn apply(session: &mut Session, input: Input) {
     match input {
         Input::Key { code, down } => session.key(&code, down),
         Input::ReleaseKeys => session.release_keys(),
-        Input::CtrlAltDel => session.send_combo(combo::CTRL_ALT_DEL),
+        Input::Combo { combo } => session.send_combo(combo.report(), Instant::now()),
+        Input::CustomCombo { codes } => {
+            if let Some(report) = input::custom_report(&codes) {
+                session.send_combo(report, Instant::now());
+            }
+        }
+        Input::ResetKeyboard => session.reset_keyboard(Instant::now()),
         Input::Mouse {
             x,
             y,

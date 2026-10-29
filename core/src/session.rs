@@ -25,6 +25,8 @@ use crate::video::{fragment_from_message, Assembler, Decoder, IFrameThrottle, IM
 pub const HEARTBEAT_INTERVAL: Duration = Duration::from_secs(5);
 /// Пауза между `GET_SUITE` и `CONNECT_BLADE` (`Thread.sleep(1000)` в оригинале).
 pub const CONNECT_DELAY: Duration = Duration::from_secs(1);
+/// Сколько держать комбинацию клавиш (`Thread.sleep(100)` в `CombineKeyListener`).
+pub const COMBO_HOLD: Duration = Duration::from_millis(100);
 /// Частота кадров, которую клиент запрашивает при старте.
 pub const DEFAULT_FPS: u8 = 35;
 
@@ -117,6 +119,8 @@ pub struct Session {
     color_bit: u8,
     next_heartbeat: Instant,
     connect_at: Option<Instant>,
+    /// Когда после комбинации вернуть клавиатуре текущее состояние (`resetKey` через 100 мс).
+    restore_keys_at: Option<Instant>,
     deframer: Deframer,
     assembler: Assembler,
     decoder: Decoder,
@@ -154,6 +158,7 @@ impl Session {
             color_bit: 0,
             next_heartbeat: now + HEARTBEAT_INTERVAL,
             connect_at: Some(if negotiate { now + CONNECT_DELAY } else { now }),
+            restore_keys_at: None,
             deframer: Deframer::new(),
             assembler: Assembler::new(),
             decoder: Decoder::new(),
@@ -170,7 +175,7 @@ impl Session {
         Ok(session)
     }
 
-    /// Таймеры: heartbeat и отложенный CONNECT_BLADE.
+    /// Таймеры: heartbeat, отложенный CONNECT_BLADE, отпускание комбинации.
     pub fn poll(&mut self, now: Instant) {
         if now >= self.next_heartbeat {
             self.send(&[cmd::HEART_BEAT, BLADE]);
@@ -180,14 +185,19 @@ impl Session {
             self.connect_at = None;
             self.connect();
         }
+        if self.restore_keys_at.is_some_and(|at| now >= at) {
+            self.restore_keys_at = None;
+            let report = self.keyboard.report();
+            self.send_key_report(report);
+        }
     }
 
     /// Когда в следующий раз вызвать [`Session::poll`].
     pub fn next_deadline(&self) -> Instant {
-        match self.connect_at {
-            Some(at) => at.min(self.next_heartbeat),
-            None => self.next_heartbeat,
-        }
+        [self.connect_at, self.restore_keys_at]
+            .into_iter()
+            .flatten()
+            .fold(self.next_heartbeat, Instant::min)
     }
 
     /// Накопленные байты для отправки в сокет.
@@ -249,11 +259,19 @@ impl Session {
         self.send_key_report(report);
     }
 
-    /// Нажать и отпустить комбинацию (например, [`input::combo::CTRL_ALT_DEL`]).
-    pub fn send_combo(&mut self, combo: KeyReport) {
+    /// Комбинация (`input::combo`, `input::custom_report`): как в оригинале, репорт
+    /// комбинации, а через [`COMBO_HOLD`] — снова текущее состояние клавиатуры.
+    pub fn send_combo(&mut self, combo: KeyReport, now: Instant) {
         self.send_key_report(combo);
+        self.restore_keys_at = Some(now + COMBO_HOLD);
+    }
+
+    /// «ResetKeyboard»: забыть нажатые клавиши и дважды, с паузой [`COMBO_HOLD`],
+    /// отправить пустой репорт — на случай залипшей на сервере клавиши.
+    pub fn reset_keyboard(&mut self, now: Instant) {
         let report = self.keyboard.release_all();
         self.send_key_report(report);
+        self.restore_keys_at = Some(now + COMBO_HOLD);
     }
 
     /// Мышь в абсолютном режиме. `x`, `y` — пиксели экрана сервера.
@@ -585,6 +603,35 @@ mod tests {
         assert_eq!(
             p[0][2..],
             encrypt_legacy(CODE_KEY, &[0, 0, 0x04, 0, 0, 0, 0, 0])[..]
+        );
+    }
+
+    #[test]
+    fn combo_is_held_then_current_state_restored() {
+        let t0 = Instant::now();
+        let mut s = Session::new(info(""), None, t0).unwrap();
+        s.key("ShiftLeft", true);
+        s.take_outgoing();
+        let legacy = |r: KeyReport| [vec![0x03, 1], encrypt_legacy(CODE_KEY, &r)].concat();
+
+        s.send_combo(input::combo::ALT_TAB, t0);
+        assert_eq!(
+            payloads(&s.take_outgoing()),
+            vec![legacy(input::combo::ALT_TAB)]
+        );
+        assert_eq!(s.next_deadline(), t0 + COMBO_HOLD);
+        s.poll(t0 + COMBO_HOLD);
+        // Shift по-прежнему зажат пользователем — его состояние и возвращается.
+        assert_eq!(
+            payloads(&s.take_outgoing()),
+            vec![legacy([0x02, 0, 0, 0, 0, 0, 0, 0])]
+        );
+
+        s.reset_keyboard(t0);
+        s.poll(t0 + COMBO_HOLD);
+        assert_eq!(
+            payloads(&s.take_outgoing()),
+            vec![legacy([0; 8]), legacy([0; 8])]
         );
     }
 

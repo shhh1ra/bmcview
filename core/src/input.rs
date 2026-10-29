@@ -141,11 +141,35 @@ impl Keyboard {
     }
 }
 
-/// Готовые комбинации из тулбара оригинала (`combinKey*`): нажатие и отпускание.
+/// Готовые комбинации из панели «Комбинации клавиш» оригинала (`PackData.combinKey*`).
 pub mod combo {
     use super::KeyReport;
 
+    pub const CTRL_SHIFT: KeyReport = [0x03, 0, 0, 0, 0, 0, 0, 0];
+    pub const CTRL_ESC: KeyReport = [0x01, 0, 0x29, 0, 0, 0, 0, 0];
     pub const CTRL_ALT_DEL: KeyReport = [0x05, 0, 0x4C, 0, 0, 0, 0, 0];
+    pub const ALT_TAB: KeyReport = [0x04, 0, 0x2B, 0, 0, 0, 0, 0];
+    pub const CTRL_SPACE: KeyReport = [0x01, 0, 0x2C, 0, 0, 0, 0, 0];
+}
+
+/// Своя комбинация (`combinKeyCustom`): до шести клавиш по `KeyboardEvent.code`.
+/// Модификаторы (Ctrl, Shift, Alt, Win/Cmd) идут в байт 0, остальные — в слоты по порядку.
+/// `None`, если нет ни одной известной клавиши или обычных клавиш больше шести.
+pub fn custom_report<S: AsRef<str>>(codes: &[S]) -> Option<KeyReport> {
+    let mut report = [0u8; 8];
+    let mut slot = 2;
+    for code in codes.iter().map(AsRef::as_ref) {
+        if let Some(bit) = modifier_bit(code) {
+            report[0] |= bit;
+        } else if let Some(usage) = hid_usage(code) {
+            if report[2..slot].contains(&usage) {
+                continue;
+            }
+            *report.get_mut(slot)? = usage;
+            slot += 1;
+        }
+    }
+    (report != [0; 8]).then_some(report)
 }
 
 /// Кнопки мыши (байт `btn`).
@@ -206,6 +230,26 @@ mod tests {
         );
         assert_eq!(kb.key("Unidentified", true), None);
         assert_eq!(kb.release_all(), [0; 8]);
+    }
+
+    #[test]
+    fn custom_combinations() {
+        assert_eq!(
+            custom_report(&["MetaLeft", "KeyR"]),
+            Some([0x08, 0, 0x15, 0, 0, 0, 0, 0])
+        );
+        assert_eq!(
+            custom_report(&["ControlLeft", "AltLeft", "F2"]),
+            Some([0x05, 0, 0x3B, 0, 0, 0, 0, 0])
+        );
+        assert_eq!(
+            custom_report(&["KeyA", "KeyA", "KeyB"]),
+            Some([0, 0, 0x04, 0x05, 0, 0, 0, 0])
+        );
+        assert_eq!(custom_report::<&str>(&[]), None);
+        assert_eq!(custom_report(&["Unidentified"]), None);
+        let seven = ["KeyA", "KeyB", "KeyC", "KeyD", "KeyE", "KeyF", "KeyG"];
+        assert_eq!(custom_report(&seven), None);
     }
 
     #[test]

@@ -92,6 +92,36 @@
         <button id="refresh" type="button" title="Запросить полный кадр">Обновить</button>
         <button id="cad" type="button">Ctrl+Alt+Del</button>
         <div class="menu">
+          <button id="combos" type="button">Клавиши ▾</button>
+          <div id="combo-panel" class="menu-list combo-panel" hidden>
+            <div class="combo-grid">
+              <button type="button" data-combo="ctrlShift">Ctrl+Shift</button>
+              <button type="button" data-combo="ctrlEsc">Ctrl+Esc</button>
+              <button type="button" data-combo="ctrlAltDel">Ctrl+Alt+Del</button>
+              <button type="button" data-combo="altTab">Alt+Tab</button>
+              <button type="button" data-combo="ctrlSpace">Ctrl+Space</button>
+              <button type="button" id="reset-keyboard" title="Отпустить все клавиши на сервере">
+                Сбросить клавиатуру
+              </button>
+            </div>
+            <p class="combo-hint">
+              Своя комбинация: щёлкните ячейку и нажмите клавишу, например Win, затем R.
+            </p>
+            <div class="combo-custom">
+              <button type="button" class="slot"></button>
+              <button type="button" class="slot"></button>
+              <button type="button" class="slot"></button>
+              <button type="button" class="slot"></button>
+              <button type="button" class="slot"></button>
+              <button type="button" class="slot"></button>
+            </div>
+            <div class="actions">
+              <button type="button" id="combo-clear">Очистить</button>
+              <button type="button" id="combo-send" class="primary">Отправить</button>
+            </div>
+          </div>
+        </div>
+        <div class="menu">
           <button id="power" type="button">Питание ▾</button>
           <div id="power-menu" class="menu-list" hidden>
             <button type="button" data-power="powerOn">Включить</button>

@@ -267,6 +267,56 @@ label.inline {
 
 /* Картинка центрируется через margin: auto — при прокрутке она не уезжает за левый край,
    как было бы с justify-content: center. */
+.combo-panel {
+  min-width: 380px;
+  padding: 0.6rem;
+  gap: 0.5rem;
+}
+
+.combo-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 0.3rem;
+}
+
+.combo-grid button,
+.combo-panel .actions button {
+  border: 1px solid var(--border);
+  text-align: center;
+  background: var(--panel);
+}
+
+.combo-panel .actions button.primary {
+  background: var(--accent);
+  border-color: var(--accent);
+}
+
+.combo-hint {
+  margin: 0.2rem 0 0;
+  color: var(--muted);
+  font-size: 0.8rem;
+}
+
+.combo-custom {
+  display: grid;
+  grid-template-columns: repeat(6, 1fr);
+  gap: 0.3rem;
+}
+
+.combo-custom .slot {
+  height: 2.2rem;
+  padding: 0;
+  border: 1px solid var(--border);
+  background: var(--bg);
+  text-align: center;
+  font-size: 0.8rem;
+}
+
+.combo-custom .slot:focus {
+  outline: 2px solid var(--accent);
+  outline-offset: -1px;
+}
+
 .stage {
   flex: 1;
   min-height: 0;
